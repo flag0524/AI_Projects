@@ -1,0 +1,30 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# 출력 이미지 (Git에 포함하지 않음)
+output/
+
+# 로그
+logs/
+
+# 원본 이미지 (용량 크므로 제외)
+input/raw_photos/
+input/codi_sets/
+
+# 엑셀 (민감 데이터)
+input/product_data.xlsx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
