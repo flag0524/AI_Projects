@@ -1,0 +1,34 @@
+{
+  "default_canvas_size": [1024, 1024],
+  "categories": {
+    "TOP": {
+      "position": [512, 400],
+      "scale": 0.6,
+      "offset_x": 0,
+      "offset_y": -20,
+      "description": "상의: 가슴 중앙 기준 배치"
+    },
+    "BOTTOM": {
+      "position": [512, 700],
+      "scale": 0.6,
+      "offset_x": 0,
+      "offset_y": 10,
+      "description": "하의: 골반 중앙 기준 배치"
+    },
+    "OUTER": {
+      "position": [512, 420],
+      "scale": 0.65,
+      "offset_x": 0,
+      "offset_y": 0,
+      "description": "아우터: 상의보다 약간 큰 스케일로 덮음"
+    },
+    "DRESS": {
+      "position": [512, 500],
+      "scale": 0.6,
+      "offset_x": 0,
+      "offset_y": 0,
+      "description": "원피스: 전체 중심 배치"
+    }
+  },
+  "layer_order": ["BOTTOM", "TOP", "OUTER"]
+}
