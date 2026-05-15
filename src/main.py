@@ -63,12 +63,17 @@ def main():
     from src.validator import InputValidator
     from src.codi_mapper import CodiMapper
 
+    from src.standard_pipeline import StandardPipeline
+
     if args.command == "render-standard":
-        # TODO: standard_pipeline.py 연결
-        logging.info(f"Standard Rendering... Item: {args.item}, Codi: {args.codi}")
+        pipeline = StandardPipeline()
+        if args.item:
+            pipeline.render_single_item(args.item, args.preset)
+        elif args.codi:
+            pipeline.render_codi_set(args.codi, args.preset)
+        else:
+            logging.error("품번(--item) 또는 코디그룹(--codi) 중 하나를 지정해야 합니다.")
     elif args.command == "render-hybrid":
-        # TODO: hybrid_renderer.py 연결
-        logging.info(f"Hybrid Rendering... Item: {args.item}, Muse: {args.muse}")
     elif args.command == "batch-process":
         # TODO: batch logic 연결
         logging.info(f"Batch Processing... Mode: {args.mode}")
