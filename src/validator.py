@@ -27,31 +27,47 @@ class InputValidator:
 
         logging.info(f"입력 데이터 검증 시작 (총 {total_count}건)...")
 
+        # 1. 엑셀 기준 파일 존재 및 명명 규칙 검사
         for _, row in df.iterrows():
             item_id = str(row['품번']).strip()
-            img_path = Config.RAW_PHOTOS_DIR / f"{item_id}.jpg"
+            expected_name = f"{item_id}.jpg"
+            img_path = Config.RAW_PHOTOS_DIR / expected_name
             
-            # 1. 파일 존재 여부 검사 (2순위: 정확한 매핑)
             if not img_path.exists():
                 missing_files.append({
                     "item_id": item_id,
                     "expected_path": str(img_path),
+                    "error_code": "E1",
                     "reason": "FILE_NOT_FOUND"
                 })
                 continue
             
-            # 2. 파일명 규칙 검사 (1순위: 정책 위반 방지)
-            # 예: 품번이 'BD-001'인데 파일명이 'BD 001.jpg'인 경우 에러
-            if not img_path.name == f"{item_id}.jpg":
+            # 실제 파일명과 기대 파일명 대조 (대소문자 및 공백 엄격 검사)
+            if img_path.name != expected_name:
                 naming_errors.append({
                     "item_id": item_id,
                     "actual_name": img_path.name,
-                    "expected_name": f"{item_id}.jpg",
+                    "expected_name": expected_name,
+                    "error_code": "E2",
                     "reason": "NAMING_RULE_VIOLATION"
                 })
                 continue
 
             valid_files.append(item_id)
+
+        # 2. Orphan Image 검사 (엑셀에 없는 파일이 폴더에 존재하는 경우)
+        all_files = list(Config.RAW_PHOTOS_DIR.glob("*.jpg"))
+        excel_item_ids = set(df['품번'].astype(str).str.strip().tolist())
+        
+        orphan_files = []
+        for f in all_files:
+            item_id_from_file = f.stem # .jpg 제외 파일명
+            if item_id_from_file not in excel_item_ids:
+                orphan_files.append({
+                    "filename": f.name,
+                    "error_code": "E3",
+                    "reason": "ORPHAN_IMAGE"
+                })
 
         # 결과 리포트 생성
         report = {
@@ -59,8 +75,10 @@ class InputValidator:
             "valid_count": len(valid_files),
             "missing_count": len(missing_files),
             "naming_error_count": len(naming_errors),
+            "orphan_count": len(orphan_files),
             "missing_list": missing_files,
-            "naming_error_list": naming_errors
+            "naming_error_list": naming_errors,
+            "orphan_list": orphan_files
         }
 
         if len(missing_files) > 0 or len(naming_errors) > 0:
