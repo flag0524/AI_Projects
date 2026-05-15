@@ -1,0 +1,11 @@
+{
+  "color_lock_enabled": true,
+  "allowed_deviation": 0.05,
+  "critical_colors": {
+    "navy": {"hex": "#000080", "tolerance": "low"},
+    "ivory": {"hex": "#FFFFF0", "tolerance": "medium"},
+    "beige": {"hex": "#F5F5DC", "tolerance": "medium"},
+    "brown": {"hex": "#A52A2A", "tolerance": "low"}
+  },
+  "drift_action": "mark_as_rejected_color_drift"
+}
