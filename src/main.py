@@ -59,21 +59,33 @@ def main():
     # 명령어 분기 처리 (각 모듈의 파이프라인으로 연결)
     logging.info(f"Executing command: {args.command} with args: {vars(args)}")
     
+    from src.excel_reader import ExcelReader
+    from src.validator import InputValidator
+    from src.codi_mapper import CodiMapper
+
     if args.command == "render-standard":
-        print(f"Standard Rendering... Item: {args.item}, Codi: {args.codi}, Dry-run: {args.dry_run}")
         # TODO: standard_pipeline.py 연결
+        logging.info(f"Standard Rendering... Item: {args.item}, Codi: {args.codi}")
     elif args.command == "render-hybrid":
-        print(f"Hybrid Rendering... Item: {args.item}, Muse: {args.muse}, Dry-run: {args.dry_run}")
         # TODO: hybrid_renderer.py 연결
+        logging.info(f"Hybrid Rendering... Item: {args.item}, Muse: {args.muse}")
     elif args.command == "batch-process":
-        print(f"Batch Processing... Mode: {args.mode}, Preset: {args.preset}")
         # TODO: batch logic 연결
+        logging.info(f"Batch Processing... Mode: {args.mode}")
     elif args.command == "run-qc":
-        print(f"Running QC... Target: {args.target}")
         # TODO: qc_pipeline.py 연결
+        logging.info(f"Running QC... Target: {args.target}")
     elif args.command == "validate-input":
-        print(f"Validating inputs... All: {args.check_all}")
-        # TODO: validator.py 연결
+        reader = ExcelReader()
+        try:
+            reader.load_product_data()
+            validator = InputValidator(reader)
+            result = validator.validate_all(missing_only=args.missing_only)
+            print(f"\n--- Validation Result ---\nTotal: {result['total_items']}\nValid: {result['valid_count']}\nMissing: {result['missing_count']}")
+            if result['missing_count'] > 0:
+                print(f"Check report at: {Config.OUTPUT_QC / 'missing_files_report.json'}")
+        except Exception as e:
+            logging.error(f"Validation failed: {e}")
 
 if __name__ == "__main__":
     Config.ensure_dirs()
