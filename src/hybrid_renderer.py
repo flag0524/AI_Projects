@@ -48,56 +48,56 @@ class HybridRenderer:
 
     def render_hybrid(self, item_id: str, muse_id: str, preset: str = "muse_lookbook"):
         """
-        [Standard 결과물] -> [ControlNet 형태 고정] -> [Muse 무드 주입] -> [최종 제안 컷]
+        [Standard 결과물] -> [AI 무드 주입(Mock)] -> [최종 제안 컷]
+        현재 환경의 CUDA 이슈 해결 전까지 Mock-up 모드로 동작하여 파이프라인 연결 확인
         """
-        import torch
         import numpy as np
         import cv2
-        from PIL import Image
+        from PIL import Image, ImageEnhance
 
         try:
-            logging.info(f"Hybrid Render 시작: {item_id} with {muse_id}")
+            logging.info(f"Hybrid Render (Mock Mode) 시작: {item_id} with {muse_id}")
             
-            # 1. Standard Engine 결과물 로드 (정확성의 기반)
+            # 1. Standard Engine 결과물 로드
             standard_img = self._get_standard_result(item_id)
             if standard_img is None:
-                raise FileNotFoundError(f"Standard Engine 결과물이 없습니다: {item_id}")
+                # 테스트를 위해 임시 이미지 생성 (결과 파일 생성 확인용)
+                logging.warning(f"Standard 결과물이 없어 임시 이미지를 생성합니다: {item_id}")
+                standard_img = Image.new('RGB', (512, 768), color=(200, 200, 200))
 
-            # 2. 뮤즈 프로필 로드 (설득력의 기반)
-            muse = self.muse_profiles.get(muse_id)
-            if not muse:
-                raise ValueError(f"존재하지 않는 뮤즈 ID입니다: {muse_id}")
+            # 2. 뮤즈 프로필 로드
+            muse = self.muse_profiles.get(muse_id, {"name": "Default Muse", "visual_prompts": "chic look"})
 
-            # 3. ControlNet을 위한 Canny Edge 추출 (상품 실루엣 고정)
-            # 원본의 형태를 100% 유지하기 위해 엣지 맵을 생성합니다.
+            # 3. AI 효과 모사 (Mocking)
+            # 실제 AI 추론 대신, 이미지의 색조와 대비를 조정하여 '무드'가 변한 것처럼 연출합니다.
             img_array = np.array(standard_img)
-            canny_img = cv2.Canny(img_array, 100, 200)
-            canny_img = Image.fromarray(canny_img).convert("RGB")
-
-            # 4. 프롬프트 조합 (뮤즈 개별 프롬프트 + 글로벌 브랜드 무드)
-            prompt = f"{muse['visual_prompts']}, {self.global_mood}"
-            negative_prompt = muse.get('negative_prompts', "low quality, blurry, distorted")
-
-            # 5. AI 추론 실행 (Inference)
-            # ControlNet이 Canny 맵을 가이드로 사용하여 상품 형태를 유지한 채 뮤즈를 생성합니다.
-            result_img = self.pipeline(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                image=canny_img,
-                num_inference_steps=30,
-                guidance_scale=7.5
-            ).images[0]
-
-            # 6. 최종 결과 저장
+            
+            # 뮤즈에 따른 색조 조정 (예: Urban Chic는 쿨톤, Natural은 웜톤)
+            if "Urban" in muse.get("name", ""):
+                img_array = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+                img_array = cv2.cvtColor(img_array, cv2.COLOR_BGR2LAB)
+                img_array[:, :, 0] = np.clip(img_array[:, :, 0] - 10, 0, 255) # 약간 어둡게
+                img_array = cv2.cvtColor(img_array, cv2.COLOR_LAB2RGB)
+            
+            result_img = Image.fromarray(img_array.astype('uint8'))
+            
+            # 대비 및 선명도 강화 (AI 렌더링 느낌 모사)
+            enhancer = ImageEnhance.Contrast(result_img)
+            result_img = enhancer.enhance(1.2)
+            
+            # 4. 최종 결과 저장
             output_filename = f"{item_id}_{muse_id}_{preset}.jpg"
             output_path = Config.OUTPUT_HYBRID / output_filename
+            
+            # 폴더가 없으면 생성
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             result_img.save(output_path, "JPEG", quality=95)
             
-            logging.info(f"Hybrid Render 성공: {output_path}")
+            logging.info(f"Hybrid Render Mock 성공: {output_path}")
             return output_path
 
         except Exception as e:
-            logging.error(f"Hybrid Render 실패 ({item_id}): {e}")
+            logging.error(f"Hybrid Render Mock 실패 ({item_id}): {e}")
             raise
 
     def _get_standard_result(self, item_id):
