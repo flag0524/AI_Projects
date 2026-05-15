@@ -62,8 +62,25 @@ def main():
             logging.error("품번(--item) 또는 코디그룹(--codi)을 지정해야 합니다.")
 
     elif args.command == "render-hybrid":
-        logging.info("Hybrid Engine 렌더링 요청됨.")
-        print("Hybrid Engine은 Phase 4에서 구현될 예정입니다.")
+        from src.hybrid_renderer import HybridRenderer
+        logging.info(f"Hybrid Engine 렌더링 시작... Item: {args.item}, Muse: {args.muse}")
+        
+        if not args.item or not args.muse:
+            logging.error("품번(--item)과 뮤즈 ID(--muse)를 모두 지정해야 합니다.")
+            print("❌ 오류: --item과 --muse 옵션이 필요합니다.")
+            return
+
+        try:
+            renderer = HybridRenderer()
+            output_path = renderer.render_hybrid(
+                item_id=args.item, 
+                muse_id=args.muse, 
+                preset=args.preset
+            )
+            print(f"✅ Hybrid 제안 컷 생성 성공: {output_path}")
+        except Exception as e:
+            logging.error(f"Hybrid Render 실패: {e}")
+            print(f"❌ Hybrid 렌더링 중 오류 발생: {e}")
 
     elif args.command == "batch-process":
         logging.info("배치 프로세스 요청됨.")
