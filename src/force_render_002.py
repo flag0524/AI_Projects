@@ -4,27 +4,20 @@ from PIL import Image, ImageEnhance
 import numpy as np
 import cv2
 
-# 로그 설정
-logging.basicConfig(level=logging.INFO)
-
-def force_premium_render():
-    print("🚀 [강제 생성 모드] ITEM-001.png를 사용하여 결과물을 생성합니다...")
+def force_premium_render_002():
+    print("[INFO] ITEM-002.png를 사용하여 결과물을 생성합니다...")
     
     # 1. 절대 경로 지정
-    input_path = Path(r"d:\blandu_project\input\raw_photos\ITEM-001.png")
-    output_path = Path(r"d:\blandu_project\output\hybrid\ITEM-001_MUSE_01_muse_lookbook.jpg")
+    input_path = Path(r"d:\blandu_project\input\raw_photos\ITEM-002.png")
+    output_path = Path(r"d:\blandu_project\output\hybrid\ITEM-002_MUSE_01_muse_lookbook.jpg")
     
     if not input_path.exists():
-        print(f"❌ 오류: 원본 이미지를 찾을 수 없습니다: {input_path}")
+        print(f"[ERROR] 원본 이미지를 찾을 수 없습니다: {input_path}")
         return
 
-    from src.bg_remover import BackgroundRemover
-    
-    # 2. 이미지 로드 및 전처리 (배경 제거 적용)
-    print(f"이미지 배경 제거 중... ({input_path.name})")
-    remover = BackgroundRemover()
-    img = remover.remove_background(input_path)
-    print(f"✅ 원본 이미지 배경 제거 완료: {input_path.name} ({img.size})")
+    # 2. 이미지 로드
+    img = Image.open(input_path).convert("RGBA")
+    print(f"[SUCCESS] 원본 이미지 로드 완료: {input_path.name}")
 
     # 3. 프리미엄 그라데이션 배경 생성
     bg = Image.new('RGB', (512, 768))
@@ -64,7 +57,7 @@ def force_premium_render():
     # 6. 저장
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result.save(output_path, "JPEG", quality=95)
-    print(f"🎯 최종 결과물 저장 완료: {output_path}")
+    print(f"[FINISH] 최종 결과물 저장 완료: {output_path}")
 
 if __name__ == "__main__":
-    force_premium_render()
+    force_premium_render_002()
