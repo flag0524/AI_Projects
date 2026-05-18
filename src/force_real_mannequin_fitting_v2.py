@@ -19,9 +19,14 @@ def render_real_mannequin_fitting_v2():
         print("[ERROR] 상품 이미지가 부족합니다.")
         return
 
-    # 2. 상품 이미지 사전 로드 및 최적화
-    top_img = Image.open(top_path).convert("RGBA")
-    bottom_img = Image.open(bottom_path).convert("RGBA")
+    from src.bg_remover import BackgroundRemover
+    
+    # 2. 상품 이미지 사전 로드 및 최적화 (배경 제거 적용)
+    remover = BackgroundRemover()
+    print("상의(ITEM-001) 배경 제거 중...")
+    top_img = remover.remove_background(top_path)
+    print("하의(ITEM-002) 배경 제거 중...")
+    bottom_img = remover.remove_background(bottom_path)
     
     tw, th = top_img.size
     t_scale = 300 / tw
