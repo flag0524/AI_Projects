@@ -37,10 +37,15 @@ class StandardPipeline:
                 raise ValueError(f"품번 {item_id}에 해당하는 데이터가 엑셀에 없습니다.")
             
             category = product_info.iloc[0]['카테고리']
-            img_path = Config.RAW_PHOTOS_DIR / f"{item_id}.jpg"
+            img_path_jpg = Config.RAW_PHOTOS_DIR / f"{item_id}.jpg"
+            img_path_png = Config.RAW_PHOTOS_DIR / f"{item_id}.png"
 
-            if not img_path.exists():
-                raise FileNotFoundError(f"이미지 파일이 없습니다: {img_path}")
+            if img_path_jpg.exists():
+                img_path = img_path_jpg
+            elif img_path_png.exists():
+                img_path = img_path_png
+            else:
+                raise FileNotFoundError(f"이미지 파일이 없습니다 (jpg/png 모두 없음): {item_id}")
 
             if dry_run:
                 logging.info(f"[Dry-Run] {item_id} 렌더링 예정: {category} -> {preset}")

@@ -1,6 +1,8 @@
 import logging
+# pyrefly: ignore [missing-import]
 import numpy as np
 from PIL import Image
+# pyrefly: ignore [missing-import]
 from rembg import remove
 from src.config import Config
 from pathlib import Path
@@ -30,13 +32,10 @@ class BackgroundRemover:
                 input_image = Image.open(f).convert("RGB")
                 
             # rembg를 이용한 배경 제거 (픽셀 기반 마스킹)
-            # alpha_matting=True를 통해 엣지 부분을 더 정교하게 처리
+            # 흰색 상품/밝은 배경에서 alpha_matting 적용 시 결과가 회색으로 나오는 이슈가 있어 비활성화하고 post_process_mask 적용
             output_image = remove(
                 input_image, 
-                alpha_matting=True, 
-                alpha_matting_foreground_threshold=240,
-                alpha_matting_background_threshold=10,
-                alpha_matting_erode_size=10
+                post_process_mask=True
             )
             
             # 정체성 보존 검사 (3순위: 시각 정체성 보존)
