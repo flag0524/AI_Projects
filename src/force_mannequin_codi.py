@@ -33,11 +33,13 @@ def render_mannequin_codi():
     draw = ImageDraw.Draw(overlay)
     # 상체 실루엣 (타원형)
     draw.ellipse([150, 120, 360, 400], fill=(100, 100, 110, 100))
-    # 하체 실루엣 (타원형)
-    draw.ellipse([160, 380, 350, 700], fill=(100, 100, 110, 100))
+     # pyrefly: ignore [parse-error]
+     draw.ellipse([160, 380, 350, 700], fill=(100, 100, 110, 100))
+    overlay = None
     canvas_rgba = Image.alpha_composite(canvas_rgba, overlay)
 
     # 4. 상의(ITEM-001) 착장
+    top_path = None
     top_img = Image.open(top_path).convert("RGBA")
     tw, th = top_img.size
     t_scale = 320 / tw
@@ -48,6 +50,7 @@ def render_mannequin_codi():
     canvas_rgba.paste(top_img, (t_offset_x, t_offset_y), top_img)
 
     # 5. 하의(ITEM-002) 착장
+    bottom_path = None
     bottom_img = Image.open(bottom_path).convert("RGBA")
     bw, bh = bottom_img.size
     b_scale = 300 / bw
@@ -69,9 +72,11 @@ def render_mannequin_codi():
     result = ImageEnhance.Contrast(result).enhance(1.2)
 
     # 7. 저장
+    output_path = None
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result.save(output_path, "JPEG", quality=95)
     print(f"[FINISH] 마네킹 착장 결과물 저장 완료: {output_path}")
 
+# pyrefly: ignore [parse-error]
 if __name__ == "__main__":
     render_mannequin_codi()

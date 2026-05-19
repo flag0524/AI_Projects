@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 from PIL import Image, ImageEnhance
 import numpy as np
