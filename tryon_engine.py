@@ -13,29 +13,34 @@ class TryOnEngine:
         self.upper_wood = np.array([40, 255, 255])
 
     def remove_background(self, img_pil):
-        """의류 이미지의 배경을 제거합니다."""
+        """의류 이미지의 배경을 제거하며, 실패 시 원본의 밝은 부분을 제거하는 강력한 폴백 적용"""
         try:
-            # rembg를 사용하여 배경 제거
+            # 1. rembg 시도
             result = remove(img_pil)
-            
-            # [추가] 제거 후 이미지가 완전히 투명한지 확인 (모든 픽셀의 알파값이 0인지)
             res_np = np.array(result)
-            if res_np.shape[2] == 4 and np.sum(res_np[:, :, 3]) == 0:
-                print("[WARN] rembg removed everything. Using fallback.")
-                raise ValueError("All pixels removed")
-                
+            
+            # 결과가 완전히 투명하거나 너무 적은 픽셀만 남은 경우 실패로 간주
+            if res_np.shape[2] == 4 and np.sum(res_np[:, :, 3]) < (res_np.shape[0] * res_np.shape[1] * 0.01):
+                raise ValueError("rembg result is too transparent")
             return result
         except Exception as e:
-            print(f"Background removal fallback triggered: {e}")
-            # [개선] 폴백: 더 정교한 배경 제거 (밝은 영역 제거)
+            print(f"[Fallback] Using advanced color-based removal: {e}")
+            # 2. 폴백: OpenCV 기반 밝은 영역(배경) 제거
             img_np = np.array(img_pil.convert("RGB"))
-            # 그레이스케일 변환 후 임계값 적용 (흰색/밝은 배경 제거)
-            gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-            _, alpha = cv2.threshold(gray, 230, 255, cv2.THRESH_BINARY_INV)
             
-            # 노이즈 제거 (작은 구멍 메우기)
-            kernel = np.ones((3,3), np.uint8)
+            # HSV 색공간으로 변환하여 더 정확하게 밝은 영역(흰색계열) 추출
+            hsv = cv2.cvtColor(img_np, cv2.COLOR_RGB2HSV)
+            lower_white = np.array([0, 0, 200]) 
+            upper_white = np.array([180, 50, 255])
+            mask = cv2.inRange(hsv, lower_white, upper_white)
+            
+            # 배경 마스크를 반전시켜 옷 영역만 추출 (흰색 배경 -> 투명)
+            alpha = cv2.bitwise_not(mask)
+            
+            # 마스크 정교화 (노이즈 제거 및 구멍 메우기)
+            kernel = np.ones((5,5), np.uint8)
             alpha = cv2.morphologyEx(alpha, cv2.MORPH_CLOSE, kernel)
+            alpha = cv2.GaussianBlur(alpha, (5,5), 0)
             
             img_rgba = cv2.cvtColor(img_np, cv2.COLOR_RGB2RGBA)
             img_rgba[:, :, 3] = alpha
