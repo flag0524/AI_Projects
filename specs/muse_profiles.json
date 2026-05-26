@@ -1,0 +1,21 @@
+{
+  "muses": {
+    "MUSE_01": {
+      "name": "Urban Chic",
+      "description": "세련되고 도시적인 이미지, 쿨톤 피부, 미니멀한 스타일",
+      "visual_prompts": "high-fashion model, urban city background, clean skin, sharp jawline, sophisticated look, 8k resolution, cinematic lighting",
+      "negative_prompts": "blurry, distorted, low quality, warm tone, rustic, casual",
+      "preferred_lighting": "daylight_studio",
+      "skin_tone": "cool_fair"
+    },
+    "MUSE_02": {
+      "name": "Natural Soft",
+      "description": "부드럽고 편안한 이미지, 웜톤 피부, 자연스러운 무드",
+      "visual_prompts": "natural beauty, soft sunlight, garden background, warm skin tone, gentle expression, soft focus, organic vibe",
+      "negative_prompts": "sharp edges, neon, artificial lighting, cold tone, aggressive",
+      "preferred_lighting": "golden_hour",
+      "skin_tone": "warm_beige"
+    }
+  },
+  "global_brand_mood": "Blandu Essence: Minimal, Modern, Timeless"
+}

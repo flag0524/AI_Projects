@@ -1,0 +1,5 @@
+{
+  "min_identity_score": 0.85,
+  "required_checks": ["color_consistency", "detail_preservation", "silhouette_match"],
+  "fail_threshold": 0.7
+}
