@@ -12,7 +12,7 @@ def verify():
         print(f"Error: {mannequin_path} not found")
         return
 
-    print("🚀 검증 시작: 하이브리드 피팅 엔진 테스트...")
+    print("[INFO] Starting verification: Hybrid Fitting Engine Test...")
     try:
         result = engine.fit_clothing_hybrid(mannequin_path, top_path=top_path)
         
