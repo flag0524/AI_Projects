@@ -83,24 +83,34 @@ class TryOnEngine:
             crop_h = end_y - start_y
             item_crop = item_resized[0:crop_h, 0:target_w]
             
-            # 알파 블렌딩 합성
-            overlay = item_crop.astype(float) / 255.0
-            base = final_img[start_y:end_y, start_x:start_x+target_w].astype(float) / 255.0
+            # 알파 블렌딩 합성 (채널 수 일치 작업)
+            overlay_rgba = item_crop.astype(float) / 255.0
+            overlay_rgb = overlay_rgba[:, :, :3]
+            alpha = overlay_rgba[:, :, 3:4]
             
-            alpha = overlay[:, :, 3:4]
-            blended = (overlay[:, :, :3] * alpha + base * (1 - alpha))
+            # base 영역을 RGB로 가져옴 (final_img가 RGBA일 수 있으므로 슬라이싱 후 처리)
+            base_region = final_img[start_y:end_y, start_x:start_x+target_w]
+            base_rgb = base_region[:, :, :3].astype(float) / 255.0
             
-            final_img[start_y:end_y, start_x:start_x+target_w] = (blended * 255).astype(np.uint8)
+            # RGB 블렌딩 계산
+            blended_rgb = (overlay_rgb * alpha + base_rgb * (1 - alpha))
+            
+            # 결과물을 다시 uint8로 변환하여 RGB 채널에 할당
+            final_img[start_y:end_y, start_x:start_x+target_w, :3] = (blended_rgb * 255).astype(np.uint8)
 
         # 마지막 단계: 나무 팔 영역을 다시 덮어씌워 보존 (Z-index 처리)
         # 원본 마네킹의 팔 영역을 최종 이미지 위에 다시 올림
         final_img = final_img.astype(float) / 255.0
         mannequin_base = np.array(mannequin).astype(float) / 255.0
         
-        # 팔 마스크가 있는 부분만 원본으로 교체
-        final_img = np.where(arm_mask_rgba == 1.0, mannequin_base, final_img)
+        # 팔 마스크가 있는 부분만 원본으로 교체 (RGB 채널만 처리)
+        final_img_rgb = final_img[:, :, :3]
+        mannequin_base_rgb = mannequin_base[:, :, :3]
         
-        return Image.fromarray((final_img * 255).astype(np.uint8))
+        # 마스크 적용 (RGB 3채널에 대해)
+        final_rgb = np.where(arm_mask_rgba == 1.0, mannequin_base_rgb, final_img_rgb)
+        
+        return Image.fromarray((final_rgb * 255).astype(np.uint8))
 
 # AI 엔진 템플릿 (IDM-VTON 등)
 def fit_clothing_ai(mannequin_img, clothing_img):
