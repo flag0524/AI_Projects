@@ -3,7 +3,7 @@ import os
 
 def main():
     engine = TryOnEngine()
-    mannequin_path = "input/raw_photos/마네킨 컷.png"
+    mannequin_path = "input/raw_photos/mannequin_base.png"
     top_path = "input/raw_photos/ITEM-001.png"
     bottom_path = "input/raw_photos/ITEM-002.png"
     output_path = "output/hybrid/FINAL_NATURAL_FIT.png"
