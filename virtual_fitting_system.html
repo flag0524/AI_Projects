@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마네킹 AI 가상 피팅 시스템</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .category-tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            flex-wrap: wrap;
+        }
+
+        .category-tab {
+            padding: 12px 28px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.05em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            justify-content: center;
+            min-width: 200px;
+        }
+
+        .category-tab:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .category-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .category-tab .icon {
+            font-size: 1.3em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-height: 900px;
+            overflow-y: auto;
+        }
+
+        .upload-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-section h2 .icon {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .upload-group {
+            margin-bottom: 25px;
+            display: none;
+        }
+
+        .upload-group.visible {
+            display: block;
+        }
+
+        .upload-group h3 {
+            color: #555;
+            font-size: 1em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .upload-group h3 .category-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+
+        .required-badge {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .upload-zone {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9f9f9;
+            position: relative;
+        }
+
+        .upload-zone:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-zone.dragover {
+            border-color: #667eea;
+            background: #e8ecff;
+            transform: scale(1.02);
+        }
+
+        .upload-zone input[type="file"] {
+            display: none;
+        }
+
+        .upload-zone .upload-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            opacity: 0.6;
+        }
+
+        .upload-zone p {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 5px;
+        }
+
+        .upload-zone .file-hint {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        .preview-container {
+            margin-top: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f5f5f5;
+            display: none;
+            max-height: 120px;
+            position: relative;
+        }
+
+        .preview-container.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .preview-container img {
+            max-width: 100%;
+            max-height: 120px;
+            object-fit: contain;
+        }
+
+        .preview-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f4ff;
+            border-radius: 6px;
+            color: #555;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .preview-info.active {
+            display: block;
+        }
+
+        .bg-removal-info {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 10px;
+            margin-top: 8px;
+            border-radius: 4px;
+            color: #2e7d32;
+            font-size: 0.85em;
+            display: none;
+        }
+
+        .bg-removal-info.show {
+            display: block;
+        }
+
+        .slider-group {
+            margin-top: 12px;
+            display: none;
+        }
+
+        .slider-group.active {
+            display: block;
+        }
+
+        .slider-group label {
+            color: #666;
+            font-size: 0.9em;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            display: inline-block;
+            color: #667eea;
+            font-weight: bold;
+            margin-left: 5px;
+            font-size: 0.9em;
+        }
+
+        .canvas-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .canvas-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .canvas-section h2 .icon {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .canvas-wrapper {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            overflow: auto;
+            background: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 600px;
+            padding: 20px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: white;
+            border-radius: 8px;
+        }
+
+        .canvas-empty {
+            color: #999;
+            text-align: center;
+            padding: 40px;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .control-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            grid-column: 1 / -1;
+        }
+
+        .control-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-section h2 .icon {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #f0f4ff;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #e8ecff;
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+            flex: 0.5;
+            min-width: 100px;
+        }
+
+        .btn-danger:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+        }
+
+        .info-message {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 4px;
+            color: #1565c0;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            border-radius: 4px;
+            color: #2e7d32;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 2em;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                min-width: 100%;
+            }
+
+            .category-tabs {
+                flex-direction: column;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            border-left: 4px solid #4caf50;
+            color: #2e7d32;
+        }
+
+        .toast.error {
+            border-left: 4px solid #f44336;
+            color: #c62828;
+        }
+
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 20px 0;
+        }
+
+        .composition-info {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 12px;
+            border-radius: 4px;
+            color: #e65100;
+            font-size: 0.9em;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .composition-info.show {
+            display: block;
+        }
+
+        .processing-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>👔 마네킹 AI 가상 피팅 시스템</h1>
+            <p>배경이 자동 제거되어 마네킹에 정확하게 맞춰진 가상 피팅을 경험하세요</p>
+        </header>
+
+        <div class="category-tabs">
+            <button class="category-tab active" onclick="selectCategory('general')">
+                <span class="icon">👕</span>
+                일반의류 (상의 + 하의)
+            </button>
+            <button class="category-tab" onclick="selectCategory('dress')">
+                <span class="icon">👗</span>
+                원피스
+            </button>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2><span class="icon">📤</span> 이미지 업로드</h2>
+
+                <div class="success-message" id="successMessage">
+                    ✓ <strong>완벽하게 맞춰졌습니다!</strong> 배경이 제거되고 마네킹에 자연스럽게 착용되었습니다.
+                </div>
+
+                <!-- 마네킹 이미지 -->
+                <div class="upload-group visible" id="mannequinGroup">
+                    <h3>마네킹 이미지 <span class="category-badge">Base</span> <span class="required-badge">*</span></h3>
+                    <div class="upload-zone" id="mannequinUpload">
+                        <div class="upload-icon">👗</div>
+                        <p>마네킹 이미지를 여기에 드롭하세요</p>
+                        <p class="file-hint">또는 클릭하여 업로드</p>
+                        <input type="file" id="mannequinFile" accept="image/*">
+                    </div>
+                    <div class="preview-container" id="mannequinPreview">
+                        <img id="mannequinImg" alt="preview">
+                    </div>
+                    <div class="preview-info" id="mannequinInfo"></div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- 상의 이미지 -->
+                <div class="upload-group visible" id="topGroup" data-category="general">
+                    <h3>상의 이미지 <span class="category-badge">Top</span></h3>
+                    <p style="color: #999; font-size: 0.85em; margin-bottom: 10px;">배경이 있어도 자동으로 제거됩니다</p>
+                    <div class="upload-zone" id="topUpload">
+                        <div class="upload-icon">👕</div>
+                        <p>상의 이미지를 여기에 드롭하세요</p>
+                        <p class="file-hint">또는 클릭하여 업로드</p>
+                        <input type="file" id="topFile" accept="image/*">
+                    </div>
+                    <div class="preview-container" id="topPreview">
+                        <img id="topImg" alt="preview">
+                    </div>
+                    <div class="preview-info" id="topInfo"></div>
+                    <div class="bg-removal-info" id="topBgInfo">
+                        ✓ 배경이 제거되었습니다
+                    </div>
+                    <div class="slider-group" id="topSliders">
+                        <label>상의 위치 미세 조정 X: <span class="slider-value" id="topXValue">0px</span></label>
+                        <input type="range" id="topX" min="-60" max="60" value="0" step="2">
+                        <label style="margin-top: 10px;">상의 위치 미세 조정 Y: <span class="slider-value" id="topYValue">0px</span></label>
+                        <input type="range" id="topY" min="-80" max="80" value="0" step="2">
+                        <label style="margin-top: 10px;">상의 크기 미세 조정: <span class="slider-value" id="topScaleValue">100%</span></label>
+                        <input type="range" id="topScale" min="75" max="125" value="100" step="2">
+                    </div>
+                </div>
+
+                <div class="divider" id="dividerTop" data-category="general"></div>
+
+                <!-- 하의 이미지 -->
+                <div class="upload-group visible" id="bottomGroup" data-category="general">
+                    <h3>하의 이미지 <span class="category-badge">Bottom</span></h3>
+                    <p style="color: #999; font-size: 0.85em; margin-bottom: 10px;">배경이 있어도 자동으로 제거됩니다</p>
+                    <div class="upload-zone" id="bottomUpload">
+                        <div class="upload-icon">👖</div>
+                        <p>하의 이미지를 여기에 드롭하세요</p>
+                        <p class="file-hint">또는 클릭하여 업로드</p>
+                        <input type="file" id="bottomFile" accept="image/*">
+                    </div>
+                    <div class="preview-container" id="bottomPreview">
+                        <img id="bottomImg" alt="preview">
+                    </div>
+                    <div class="preview-info" id="bottomInfo"></div>
+                    <div class="bg-removal-info" id="bottomBgInfo">
+                        ✓ 배경이 제거되었습니다
+                    </div>
+                    <div class="slider-group" id="bottomSliders">
+                        <label>하의 위치 미세 조정 X: <span class="slider-value" id="bottomXValue">0px</span></label>
+                        <input type="range" id="bottomX" min="-60" max="60" value="0" step="2">
+                        <label style="margin-top: 10px;">하의 위치 미세 조정 Y: <span class="slider-value" id="bottomYValue">0px</span></label>
+                        <input type="range" id="bottomY" min="-80" max="80" value="0" step="2">
+                        <label style="margin-top: 10px;">하의 크기 미세 조정: <span class="slider-value" id="bottomScaleValue">100%</span></label>
+                        <input type="range" id="bottomScale" min="75" max="125" value="100" step="2">
+                    </div>
+                </div>
+
+                <div class="divider" id="dividerBottom" data-category="general"></div>
+
+                <!-- 원피스 이미지 -->
+                <div class="upload-group" id="dressGroup" data-category="dress">
+                    <h3>원피스 이미지 <span class="category-badge">Dress</span></h3>
+                    <p style="color: #999; font-size: 0.85em; margin-bottom: 10px;">배경이 있어도 자동으로 제거됩니다</p>
+                    <div class="upload-zone" id="dressUpload">
+                        <div class="upload-icon">👗</div>
+                        <p>원피스 이미지를 여기에 드롭하세요</p>
+                        <p class="file-hint">또는 클릭하여 업로드</p>
+                        <input type="file" id="dressFile" accept="image/*">
+                    </div>
+                    <div class="preview-container" id="dressPreview">
+                        <img id="dressImg" alt="preview">
+                    </div>
+                    <div class="preview-info" id="dressInfo"></div>
+                    <div class="bg-removal-info" id="dressBgInfo">
+                        ✓ 배경이 제거되었습니다
+                    </div>
+                    <div class="slider-group" id="dressSliders">
+                        <label>원피스 위치 미세 조정 X: <span class="slider-value" id="dressXValue">0px</span></label>
+                        <input type="range" id="dressX" min="-60" max="60" value="0" step="2">
+                        <label style="margin-top: 10px;">원피스 위치 미세 조정 Y: <span class="slider-value" id="dressYValue">0px</span></label>
+                        <input type="range" id="dressY" min="-80" max="80" value="0" step="2">
+                        <label style="margin-top: 10px;">원피스 크기 미세 조정: <span class="slider-value" id="dressScaleValue">100%</span></label>
+                        <input type="range" id="dressScale" min="75" max="125" value="100" step="2">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 캔버스 섹션 -->
+            <div class="canvas-section">
+                <h2><span class="icon">🎨</span> 최종 합성 결과</h2>
+                <div class="canvas-wrapper" id="canvasWrapper">
+                    <canvas id="fitCanvas" width="500" height="800"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 제어 섹션 -->
+        <div class="control-section">
+            <h2><span class="icon">⚙️</span> 옵션</h2>
+            <div class="info-message">
+                💡 <strong>사용 방법:</strong> 마네킹 이미지를 업로드하면, 상의/하의 이미지의 배경이 자동으로 제거되고 마네킹에 맞춰 정렬됩니다. 미세 조정이 필요하면 슬라이더를 사용하세요.
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="downloadResult()">📥 결과 이미지 다운로드</button>
+                <button class="btn-secondary" onclick="resetAll()">🔄 초기화</button>
+                <button class="btn-danger" onclick="clearCanvas()">🗑️ 캔버스 지우기</button>
+            </div>
+
+            <div class="download-section" id="downloadSection" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee;">
+                <h3 style="color: #333; margin-bottom: 15px; font-size: 1.1em;">📊 업로드 정보</h3>
+                <div id="uploadStats" style="font-size: 0.95em; color: #666; line-height: 1.8;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedCategory = 'general';
+        let mannequinSize = { width: 0, height: 0 };
+
+        const images = {
+            mannequin: null,
+            top: null,
+            bottom: null,
+            dress: null
+        };
+
+        const canvas = document.getElementById('fitCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const settings = {
+            topX: 0,
+            topY: 0,
+            topScale: 100,
+            bottomX: 0,
+            bottomY: 0,
+            bottomScale: 100,
+            dressX: 0,
+            dressY: 0,
+            dressScale: 100
+        };
+
+        // 배경 제거 함수 (최적화된 버전)
+        function removeBackground(img) {
+            return new Promise((resolve) => {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = img.width;
+                tempCanvas.height = img.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(img, 0, 0);
+
+                const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                const data = imageData.data;
+
+                // 네 모서리에서 더욱 광범위하게 배경색 샘플링
+                const bgColors = [];
+                const sampleSize = 6;
+
+                // 네 모서리 각각에서 sampleSize x sampleSize 샘플
+                const corners = [
+                    { x: 0, y: 0 },                                          // 좌상단
+                    { x: tempCanvas.width - sampleSize, y: 0 },             // 우상단
+                    { x: 0, y: tempCanvas.height - sampleSize },            // 좌하단
+                    { x: tempCanvas.width - sampleSize, y: tempCanvas.height - sampleSize } // 우하단
+                ];
+
+                corners.forEach(corner => {
+                    for (let i = corner.x; i < corner.x + sampleSize && i < tempCanvas.width; i++) {
+                        for (let j = corner.y; j < corner.y + sampleSize && j < tempCanvas.height; j++) {
+                            const idx = (j * tempCanvas.width + i) * 4;
+                            bgColors.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+                        }
+                    }
+                });
+
+                // 배경색의 평균값 계산
+                const avgBg = {
+                    r: Math.round(bgColors.reduce((a, c) => a + c.r, 0) / bgColors.length),
+                    g: Math.round(bgColors.reduce((a, c) => a + c.g, 0) / bgColors.length),
+                    b: Math.round(bgColors.reduce((a, c) => a + c.b, 0) / bgColors.length)
+                };
+
+                // 배경색의 특성에 따라 threshold 동적으로 조정
+                const brightness = (avgBg.r + avgBg.g + avgBg.b) / 3;
+                const saturation = Math.max(avgBg.r, avgBg.g, avgBg.b) - Math.min(avgBg.r, avgBg.g, avgBg.b);
+
+                // 밝은 배경은 더 엄격하게, 어두운 배경은 더 너그럽게
+                let threshold = 35;
+                if (brightness > 220) threshold = 28;    // 매우 밝은 배경 (흰색)
+                else if (brightness > 180) threshold = 32; // 밝은 배경 (연한 회색)
+                else if (brightness < 100) threshold = 42; // 어두운 배경
+
+                // 높은 채도는 배경이 단색이 아닐 수 있으므로 threshold 조정
+                if (saturation > 50) threshold += 5;
+
+                // 픽셀별 배경 제거 처리
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    const a = data[i + 3];
+
+                    // 이미 투명한 픽셀은 건너뛰기
+                    if (a < 50) continue;
+
+                    // 색상 차이 계산 (가중치 적용)
+                    const rDiff = Math.abs(r - avgBg.r);
+                    const gDiff = Math.abs(g - avgBg.g);
+                    const bDiff = Math.abs(b - avgBg.b);
+
+                    // RGB 채널별 차이를 가중치와 함께 계산
+                    const diff = rDiff * 0.3 + gDiff * 0.59 + bDiff * 0.11; // 인간의 시각 인지도
+
+                    if (diff < threshold) {
+                        data[i + 3] = 0; // 완전히 투명하게
+                    }
+                }
+
+                tempCtx.putImageData(imageData, 0, 0);
+
+                const resultImg = new Image();
+                resultImg.onload = () => resolve(resultImg);
+                resultImg.src = tempCanvas.toDataURL();
+            });
+        }
+
+        function selectCategory(category) {
+            selectedCategory = category;
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.closest('.category-tab').classList.add('active');
+            updateCategoryUI();
+            showToast(`${category === 'general' ? '일반의류' : '원피스'} 카테고리 선택됨`, 'success');
+        }
+
+        function updateCategoryUI() {
+            const topGroup = document.getElementById('topGroup');
+            const bottomGroup = document.getElementById('bottomGroup');
+            const dividerTop = document.getElementById('dividerTop');
+            const dividerBottom = document.getElementById('dividerBottom');
+            const dressGroup = document.getElementById('dressGroup');
+
+            if (selectedCategory === 'general') {
+                topGroup.classList.add('visible');
+                bottomGroup.classList.add('visible');
+                dividerTop.style.display = 'block';
+                dividerBottom.style.display = 'block';
+                dressGroup.classList.remove('visible');
+            } else {
+                topGroup.classList.remove('visible');
+                bottomGroup.classList.remove('visible');
+                dividerTop.style.display = 'none';
+                dividerBottom.style.display = 'none';
+                dressGroup.classList.add('visible');
+            }
+            resetAll();
+        }
+
+        function autoAdjustSize(imageKey) {
+            if (!images[imageKey] || mannequinSize.width === 0) return;
+
+            // 마네킹 형태에 정확하게 맞춘 스케일 팩터
+            // 의류 너비와 마네킹 너비의 비율을 정밀하게 계산
+            const scaleFactors = {
+                top: 0.97,      // 마네킹 너비의 97% (셔츠는 약간 넓게)
+                bottom: 0.91,   // 마네킹 너비의 91% (바지는 조금 좁게)
+                dress: 0.95     // 마네킹 너비의 95% (원피스는 중간)
+            };
+
+            // 마네킹 높이에 비례한 의류 위치
+            // 마네킹의 실제 신체 부위와 정확하게 정렬
+            const yPositionFactors = {
+                top: 0.075,     // 마네킹 높이의 7.5% (목 아래에서 시작)
+                bottom: 0.475,  // 마네킹 높이의 47.5% (허리에서 시작)
+                dress: 0.055    // 마네킹 높이의 5.5% (목 바로 아래에서 시작)
+            };
+
+            const factor = scaleFactors[imageKey];
+            const targetWidth = mannequinSize.width * factor;
+            const scaleFactor = (targetWidth / images[imageKey].width) * 100;
+
+            // 마네킹 높이에 기반한 Y 위치 계산 (20px는 canvas의 mannequinY)
+            const yPositionFromHeight = Math.round(mannequinSize.height * yPositionFactors[imageKey]);
+
+            settings[imageKey + 'Scale'] = Math.round(scaleFactor);
+            settings[imageKey + 'Y'] = yPositionFromHeight;
+
+            const scaleInput = document.getElementById(imageKey + 'Scale');
+            const yInput = document.getElementById(imageKey + 'Y');
+            if (scaleInput) {
+                scaleInput.value = settings[imageKey + 'Scale'];
+                document.getElementById(imageKey + 'ScaleValue').textContent = settings[imageKey + 'Scale'] + '%';
+            }
+            if (yInput) {
+                yInput.value = settings[imageKey + 'Y'];
+                document.getElementById(imageKey + 'YValue').textContent = settings[imageKey + 'Y'] + 'px';
+            }
+        }
+
+        function setupUploadZone(zoneId, fileId, imageKey, previewId, sliderId = null, bgInfoId = null) {
+            const zone = document.getElementById(zoneId);
+            const fileInput = document.getElementById(fileId);
+
+            zone.addEventListener('click', () => fileInput.click());
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                handleFileUpload(e.dataTransfer.files[0], imageKey, previewId, sliderId, bgInfoId);
+            });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    handleFileUpload(e.target.files[0], imageKey, previewId, sliderId, bgInfoId);
+                }
+            });
+        }
+
+        async function handleFileUpload(file, imageKey, previewId, sliderId, bgInfoId) {
+            if (!file.type.startsWith('image/')) {
+                showToast('이미지 파일만 업로드 가능합니다', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const img = new Image();
+                img.onload = async () => {
+                    if (imageKey === 'mannequin') {
+                        images[imageKey] = img;
+                        mannequinSize.width = img.width;
+                        mannequinSize.height = img.height;
+                    } else {
+                        const bgRemovedImg = await removeBackground(img);
+                        images[imageKey] = bgRemovedImg;
+                    }
+
+                    const preview = document.getElementById(previewId);
+                    preview.classList.add('active');
+                    const previewImg = preview.querySelector('img');
+                    previewImg.src = images[imageKey].src;
+
+                    const infoEl = document.getElementById(previewId).nextElementSibling;
+                    infoEl.classList.add('active');
+                    infoEl.innerHTML = `✓ 업로드됨 (${images[imageKey].width}x${images[imageKey].height}px)`;
+
+                    if (bgInfoId && imageKey !== 'mannequin') {
+                        document.getElementById(bgInfoId).classList.add('show');
+                    }
+
+                    if (sliderId) {
+                        document.getElementById(sliderId).classList.add('active');
+                        if (imageKey !== 'mannequin' && mannequinSize.width > 0) {
+                            autoAdjustSize(imageKey);
+                        }
+                    }
+
+                    redrawCanvas();
+                    updateDownloadStats();
+                    showSuccessMessage();
+
+                    const labels = { mannequin: '마네킹', top: '상의', bottom: '하의', dress: '원피스' };
+                    showToast(`${labels[imageKey]} 이미지 업로드 완료`, 'success');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showSuccessMessage() {
+            const msg = document.getElementById('successMessage');
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 4000);
+        }
+
+        function redrawCanvas() {
+            ctx.fillStyle = '#f9f9f9';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (!images.mannequin) {
+                ctx.fillStyle = '#999';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('마네킹 이미지를 먼저 업로드하세요', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            const mannequinX = (canvas.width - images.mannequin.width) / 2;
+            const mannequinY = 20;
+            const mannequinWidth = images.mannequin.width;
+            const mannequinHeight = images.mannequin.height;
+
+            if (selectedCategory === 'general') {
+                // ===== 일반의류 (상의 + 하의) 렌더링 =====
+
+                // 마네킹 분할 지점들
+                const legsDivide = mannequinHeight * 0.42;    // 다리/몸통 경계
+                const waistDivide = mannequinHeight * 0.50;   // 허리/상체 경계
+                const shoulderDivide = mannequinHeight * 0.58; // 어깨/팔 경계
+
+                // 1. 마네킹 다리 부분 (가장 아래)
+                ctx.drawImage(
+                    images.mannequin,
+                    0, legsDivide, mannequinWidth, mannequinHeight - legsDivide,
+                    mannequinX, mannequinY + legsDivide, mannequinWidth, mannequinHeight - legsDivide
+                );
+
+                // 2. 하의 렌더링 (다리 위에)
+                if (images.bottom) {
+                    const bottomW = images.bottom.width * (settings.bottomScale / 100);
+                    const bottomH = images.bottom.height * (settings.bottomScale / 100);
+                    const bottomX = (canvas.width - bottomW) / 2 + settings.bottomX;
+                    const bottomY = mannequinY + settings.bottomY;
+                    ctx.save();
+                    ctx.globalAlpha = 0.90;
+                    ctx.drawImage(images.bottom, bottomX, bottomY, bottomW, bottomH);
+                    ctx.restore();
+                }
+
+                // 3. 마네킹 중간 부분 (허리/배)
+                ctx.drawImage(
+                    images.mannequin,
+                    0, legsDivide, mannequinWidth, waistDivide - legsDivide,
+                    mannequinX, mannequinY + legsDivide, mannequinWidth, waistDivide - legsDivide
+                );
+
+                // 4. 상의 렌더링 (배 위에, 가슴 부분)
+                if (images.top) {
+                    const topW = images.top.width * (settings.topScale / 100);
+                    const topH = images.top.height * (settings.topScale / 100);
+                    const topX = (canvas.width - topW) / 2 + settings.topX;
+                    const topY = mannequinY + settings.topY;
+                    ctx.save();
+                    ctx.globalAlpha = 0.88;
+                    ctx.drawImage(images.top, topX, topY, topW, topH);
+                    ctx.restore();
+                }
+
+                // 5. 마네킹 상반부 (팔, 목, 머리) - 의류 위에 겹침
+                ctx.drawImage(
+                    images.mannequin,
+                    0, shoulderDivide, mannequinWidth, mannequinHeight - shoulderDivide,
+                    mannequinX, mannequinY + shoulderDivide, mannequinWidth, mannequinHeight - shoulderDivide
+                );
+
+                // 6. 마네킹 팔 부분 (가장 위, 의류 위에 완전히 겹침)
+                ctx.drawImage(
+                    images.mannequin,
+                    0, 0, mannequinWidth, shoulderDivide,
+                    mannequinX, mannequinY, mannequinWidth, shoulderDivide
+                );
+
+            } else if (selectedCategory === 'dress') {
+                // ===== 원피스 렌더링 =====
+
+                const dressWaistDivide = mannequinHeight * 0.48; // 원피스가 마네킹 몸통과 만나는 지점
+
+                // 1. 마네킹 다리 부분 (가장 아래)
+                ctx.drawImage(
+                    images.mannequin,
+                    0, dressWaistDivide, mannequinWidth, mannequinHeight - dressWaistDivide,
+                    mannequinX, mannequinY + dressWaistDivide, mannequinWidth, mannequinHeight - dressWaistDivide
+                );
+
+                // 2. 원피스 렌더링
+                if (images.dress) {
+                    const dressW = images.dress.width * (settings.dressScale / 100);
+                    const dressH = images.dress.height * (settings.dressScale / 100);
+                    const dressX = (canvas.width - dressW) / 2 + settings.dressX;
+                    const dressY = mannequinY + settings.dressY;
+                    ctx.save();
+                    ctx.globalAlpha = 0.88;
+                    ctx.drawImage(images.dress, dressX, dressY, dressW, dressH);
+                    ctx.restore();
+                }
+
+                // 3. 마네킹 상반부 (팔, 목, 머리) - 원피스 위에 겹침
+                ctx.drawImage(
+                    images.mannequin,
+                    0, 0, mannequinWidth, dressWaistDivide,
+                    mannequinX, mannequinY, mannequinWidth, dressWaistDivide
+                );
+            }
+        }
+
+        // 슬라이더 이벤트
+        ['top', 'bottom', 'dress'].forEach(type => {
+            ['X', 'Y', 'Scale'].forEach(prop => {
+                const elem = document.getElementById(type + prop);
+                if (elem) {
+                    elem.addEventListener('input', (e) => {
+                        settings[type + prop] = parseInt(e.target.value);
+                        document.getElementById(type + prop + 'Value').textContent =
+                            e.target.value + (prop === 'Scale' ? '%' : 'px');
+                        redrawCanvas();
+                    });
+                }
+            });
+        });
+
+        function downloadResult() {
+            if (!images.mannequin) {
+                showToast('마네킹 이미지를 먼저 업로드하세요', 'error');
+                return;
+            }
+            const link = document.createElement('a');
+            link.download = `virtual-fitting-${new Date().getTime()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            showToast('이미지가 다운로드되었습니다', 'success');
+        }
+
+        function resetAll() {
+            images.top = null;
+            images.bottom = null;
+            images.dress = null;
+
+            ['top', 'bottom', 'dress'].forEach(type => {
+                document.getElementById(type + 'File').value = '';
+                document.getElementById(type + 'Preview').classList.remove('active');
+                document.getElementById(type + 'Info').classList.remove('active');
+                document.getElementById(type + 'BgInfo').classList.remove('show');
+                document.getElementById(type + 'Sliders').classList.remove('active');
+
+                ['X', 'Y', 'Scale'].forEach(prop => {
+                    const input = document.getElementById(type + prop);
+                    if (input) {
+                        input.value = prop === 'Scale' ? 100 : 0;
+                        document.getElementById(type + prop + 'Value').textContent =
+                            (prop === 'Scale' ? '100%' : '0px');
+                    }
+                    settings[type + prop] = prop === 'Scale' ? 100 : 0;
+                });
+            });
+
+            redrawCanvas();
+            updateDownloadStats();
+            showToast('초기화되었습니다', 'success');
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            showToast('캔버스가 지워졌습니다', 'success');
+        }
+
+        function updateDownloadStats() {
+            const section = document.getElementById('downloadSection');
+            const stats = document.getElementById('uploadStats');
+            const items = [];
+
+            if (images.mannequin) items.push(`• 마네킹 (${images.mannequin.width}x${images.mannequin.height}px)`);
+            if (selectedCategory === 'general') {
+                if (images.top) items.push(`• 상의 (${images.top.width}x${images.top.height}px, 스케일: ${settings.topScale}%)`);
+                if (images.bottom) items.push(`• 하의 (${images.bottom.width}x${images.bottom.height}px, 스케일: ${settings.bottomScale}%)`);
+            } else {
+                if (images.dress) items.push(`• 원피스 (${images.dress.width}x${images.dress.height}px, 스케일: ${settings.dressScale}%)`);
+            }
+
+            section.style.display = items.length > 0 ? 'block' : 'none';
+            if (items.length > 0) stats.innerHTML = items.join('<br>');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        setupUploadZone('mannequinUpload', 'mannequinFile', 'mannequin', 'mannequinPreview');
+        setupUploadZone('topUpload', 'topFile', 'top', 'topPreview', 'topSliders', 'topBgInfo');
+        setupUploadZone('bottomUpload', 'bottomFile', 'bottom', 'bottomPreview', 'bottomSliders', 'bottomBgInfo');
+        setupUploadZone('dressUpload', 'dressFile', 'dress', 'dressPreview', 'dressSliders', 'dressBgInfo');
+
+        redrawCanvas();
+    </script>
+</body>
+</html>
