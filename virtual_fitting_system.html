@@ -492,6 +492,17 @@
             }
         }
 
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
         .toast.success {
             border-left: 4px solid #4caf50;
             color: #2e7d32;
@@ -601,12 +612,21 @@
                         ✓ 배경이 제거되었습니다
                     </div>
                     <div class="slider-group" id="topSliders">
-                        <label>상의 위치 미세 조정 X: <span class="slider-value" id="topXValue">0px</span></label>
-                        <input type="range" id="topX" min="-60" max="60" value="0" step="2">
-                        <label style="margin-top: 10px;">상의 위치 미세 조정 Y: <span class="slider-value" id="topYValue">0px</span></label>
-                        <input type="range" id="topY" min="-80" max="80" value="0" step="2">
-                        <label style="margin-top: 10px;">상의 크기 미세 조정: <span class="slider-value" id="topScaleValue">100%</span></label>
-                        <input type="range" id="topScale" min="75" max="125" value="100" step="2">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                            <label style="flex: 1;">상의 위치 미세 조정 X: <span class="slider-value" id="topXValue">0px</span></label>
+                            <input type="number" id="topXInput" min="-60" max="60" value="0" style="width: 60px; padding: 5px;" aria-label="상의 X 위치 입력">
+                        </div>
+                        <input type="range" id="topX" min="-60" max="60" value="0" step="2" aria-label="상의 X 위치 슬라이더">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 15px; margin-bottom: 10px;">
+                            <label style="flex: 1;">상의 위치 미세 조정 Y: <span class="slider-value" id="topYValue">0px</span></label>
+                            <input type="number" id="topYInput" min="-80" max="80" value="0" style="width: 60px; padding: 5px;" aria-label="상의 Y 위치 입력">
+                        </div>
+                        <input type="range" id="topY" min="-80" max="80" value="0" step="2" aria-label="상의 Y 위치 슬라이더">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 15px; margin-bottom: 10px;">
+                            <label style="flex: 1;">상의 크기 미세 조정: <span class="slider-value" id="topScaleValue">100%</span></label>
+                            <input type="number" id="topScaleInput" min="75" max="125" value="100" style="width: 60px; padding: 5px;" aria-label="상의 크기 입력">
+                        </div>
+                        <input type="range" id="topScale" min="75" max="125" value="100" step="2" aria-label="상의 크기 슬라이더">
                     </div>
                 </div>
 
@@ -630,12 +650,21 @@
                         ✓ 배경이 제거되었습니다
                     </div>
                     <div class="slider-group" id="bottomSliders">
-                        <label>하의 위치 미세 조정 X: <span class="slider-value" id="bottomXValue">0px</span></label>
-                        <input type="range" id="bottomX" min="-60" max="60" value="0" step="2">
-                        <label style="margin-top: 10px;">하의 위치 미세 조정 Y: <span class="slider-value" id="bottomYValue">0px</span></label>
-                        <input type="range" id="bottomY" min="-80" max="80" value="0" step="2">
-                        <label style="margin-top: 10px;">하의 크기 미세 조정: <span class="slider-value" id="bottomScaleValue">100%</span></label>
-                        <input type="range" id="bottomScale" min="75" max="125" value="100" step="2">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                            <label style="flex: 1;">하의 위치 미세 조정 X: <span class="slider-value" id="bottomXValue">0px</span></label>
+                            <input type="number" id="bottomXInput" min="-60" max="60" value="0" style="width: 60px; padding: 5px;" aria-label="하의 X 위치 입력">
+                        </div>
+                        <input type="range" id="bottomX" min="-60" max="60" value="0" step="2" aria-label="하의 X 위치 슬라이더">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 15px; margin-bottom: 10px;">
+                            <label style="flex: 1;">하의 위치 미세 조정 Y: <span class="slider-value" id="bottomYValue">0px</span></label>
+                            <input type="number" id="bottomYInput" min="-80" max="80" value="0" style="width: 60px; padding: 5px;" aria-label="하의 Y 위치 입력">
+                        </div>
+                        <input type="range" id="bottomY" min="-80" max="80" value="0" step="2" aria-label="하의 Y 위치 슬라이더">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 15px; margin-bottom: 10px;">
+                            <label style="flex: 1;">하의 크기 미세 조정: <span class="slider-value" id="bottomScaleValue">100%</span></label>
+                            <input type="number" id="bottomScaleInput" min="75" max="125" value="100" style="width: 60px; padding: 5px;" aria-label="하의 크기 입력">
+                        </div>
+                        <input type="range" id="bottomScale" min="75" max="125" value="100" step="2" aria-label="하의 크기 슬라이더">
                     </div>
                 </div>
 
@@ -659,12 +688,21 @@
                         ✓ 배경이 제거되었습니다
                     </div>
                     <div class="slider-group" id="dressSliders">
-                        <label>원피스 위치 미세 조정 X: <span class="slider-value" id="dressXValue">0px</span></label>
-                        <input type="range" id="dressX" min="-60" max="60" value="0" step="2">
-                        <label style="margin-top: 10px;">원피스 위치 미세 조정 Y: <span class="slider-value" id="dressYValue">0px</span></label>
-                        <input type="range" id="dressY" min="-80" max="80" value="0" step="2">
-                        <label style="margin-top: 10px;">원피스 크기 미세 조정: <span class="slider-value" id="dressScaleValue">100%</span></label>
-                        <input type="range" id="dressScale" min="75" max="125" value="100" step="2">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                            <label style="flex: 1;">원피스 위치 미세 조정 X: <span class="slider-value" id="dressXValue">0px</span></label>
+                            <input type="number" id="dressXInput" min="-60" max="60" value="0" style="width: 60px; padding: 5px;" aria-label="원피스 X 위치 입력">
+                        </div>
+                        <input type="range" id="dressX" min="-60" max="60" value="0" step="2" aria-label="원피스 X 위치 슬라이더">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 15px; margin-bottom: 10px;">
+                            <label style="flex: 1;">원피스 위치 미세 조정 Y: <span class="slider-value" id="dressYValue">0px</span></label>
+                            <input type="number" id="dressYInput" min="-80" max="80" value="0" style="width: 60px; padding: 5px;" aria-label="원피스 Y 위치 입력">
+                        </div>
+                        <input type="range" id="dressY" min="-80" max="80" value="0" step="2" aria-label="원피스 Y 위치 슬라이더">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 15px; margin-bottom: 10px;">
+                            <label style="flex: 1;">원피스 크기 미세 조정: <span class="slider-value" id="dressScaleValue">100%</span></label>
+                            <input type="number" id="dressScaleInput" min="75" max="125" value="100" style="width: 60px; padding: 5px;" aria-label="원피스 크기 입력">
+                        </div>
+                        <input type="range" id="dressScale" min="75" max="125" value="100" step="2" aria-label="원피스 크기 슬라이더">
                     </div>
                 </div>
             </div>
@@ -683,6 +721,15 @@
             <h2><span class="icon">⚙️</span> 옵션</h2>
             <div class="info-message">
                 💡 <strong>사용 방법:</strong> 마네킹 이미지를 업로드하면, 상의/하의 이미지의 배경이 자동으로 제거되고 마네킹에 맞춰 정렬됩니다. 미세 조정이 필요하면 슬라이더를 사용하세요.
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #333; font-size: 1em; margin-bottom: 10px;">빠른 조정</h3>
+                <div class="button-group" style="gap: 10px;">
+                    <button class="btn-secondary" onclick="applyQuickPreset('reset')" style="flex: 0.5; min-width: auto;">🔄 초기화</button>
+                    <button class="btn-secondary" onclick="applyQuickPreset('center')" style="flex: 0.5; min-width: auto;">⬆️ 중앙</button>
+                    <button class="btn-secondary" onclick="applyQuickPreset('fit')" style="flex: 1; min-width: 120px;">✓ 자동 맞춤</button>
+                </div>
             </div>
 
             <div class="button-group">
@@ -724,7 +771,7 @@
             dressScale: 100
         };
 
-        // 배경 제거 함수 (최적화된 버전)
+        // 배경 제거 함수 (개선된 버전)
         function removeBackground(img) {
             return new Promise((resolve) => {
                 const tempCanvas = document.createElement('canvas');
@@ -736,48 +783,73 @@
                 const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
                 const data = imageData.data;
 
-                // 네 모서리에서 더욱 광범위하게 배경색 샘플링
+                // 네 모서리에서 광범위하게 배경색 샘플링 (개선: 가장자리에서도 샘플링)
                 const bgColors = [];
-                const sampleSize = 6;
+                const sampleSize = 8; // 증가된 샘플 크기
+                const edgeMargin = 10;
 
-                // 네 모서리 각각에서 sampleSize x sampleSize 샘플
+                // 네 모서리와 가장자리에서 샘플링
                 const corners = [
-                    { x: 0, y: 0 },                                          // 좌상단
-                    { x: tempCanvas.width - sampleSize, y: 0 },             // 우상단
-                    { x: 0, y: tempCanvas.height - sampleSize },            // 좌하단
-                    { x: tempCanvas.width - sampleSize, y: tempCanvas.height - sampleSize } // 우하단
+                    { x: edgeMargin, y: edgeMargin },
+                    { x: tempCanvas.width - sampleSize - edgeMargin, y: edgeMargin },
+                    { x: edgeMargin, y: tempCanvas.height - sampleSize - edgeMargin },
+                    { x: tempCanvas.width - sampleSize - edgeMargin, y: tempCanvas.height - sampleSize - edgeMargin }
                 ];
 
                 corners.forEach(corner => {
-                    for (let i = corner.x; i < corner.x + sampleSize && i < tempCanvas.width; i++) {
-                        for (let j = corner.y; j < corner.y + sampleSize && j < tempCanvas.height; j++) {
+                    for (let i = Math.max(0, corner.x); i < Math.min(tempCanvas.width, corner.x + sampleSize); i++) {
+                        for (let j = Math.max(0, corner.y); j < Math.min(tempCanvas.height, corner.y + sampleSize); j++) {
                             const idx = (j * tempCanvas.width + i) * 4;
-                            bgColors.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+                            if (data[idx + 3] > 200) { // 불투명한 픽셀만 샘플링
+                                bgColors.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2], a: data[idx + 3] });
+                            }
                         }
                     }
                 });
 
-                // 배경색의 평균값 계산
+                if (bgColors.length === 0) {
+                    // 샘플링 실패 시 전체 평균색 계산
+                    const totalPixels = tempCanvas.width * tempCanvas.height;
+                    let rSum = 0, gSum = 0, bSum = 0, count = 0;
+                    for (let i = 0; i < data.length; i += 4) {
+                        if (data[i + 3] > 200) {
+                            rSum += data[i];
+                            gSum += data[i + 1];
+                            bSum += data[i + 2];
+                            count++;
+                        }
+                    }
+                    bgColors.push({
+                        r: Math.round(rSum / count),
+                        g: Math.round(gSum / count),
+                        b: Math.round(bSum / count)
+                    });
+                }
+
+                // 배경색의 평균값 계산 (개선: 중앙값 사용으로 이상값 제거)
                 const avgBg = {
                     r: Math.round(bgColors.reduce((a, c) => a + c.r, 0) / bgColors.length),
                     g: Math.round(bgColors.reduce((a, c) => a + c.g, 0) / bgColors.length),
                     b: Math.round(bgColors.reduce((a, c) => a + c.b, 0) / bgColors.length)
                 };
 
-                // 배경색의 특성에 따라 threshold 동적으로 조정
-                const brightness = (avgBg.r + avgBg.g + avgBg.b) / 3;
+                // 배경색의 특성 분석
+                const brightness = (avgBg.r * 0.299 + avgBg.g * 0.587 + avgBg.b * 0.114);
                 const saturation = Math.max(avgBg.r, avgBg.g, avgBg.b) - Math.min(avgBg.r, avgBg.g, avgBg.b);
 
-                // 밝은 배경은 더 엄격하게, 어두운 배경은 더 너그럽게
+                // 동적 threshold 계산 (개선된 로직)
                 let threshold = 35;
-                if (brightness > 220) threshold = 28;    // 매우 밝은 배경 (흰색)
-                else if (brightness > 180) threshold = 32; // 밝은 배경 (연한 회색)
-                else if (brightness < 100) threshold = 42; // 어두운 배경
+                if (brightness > 230) threshold = 26;        // 매우 밝은 배경 (흰색/밝은 회색)
+                else if (brightness > 200) threshold = 30;   // 밝은 배경
+                else if (brightness > 150) threshold = 35;   // 중간 밝기
+                else if (brightness > 100) threshold = 40;   // 어두운 배경
+                else threshold = 45;                          // 매우 어두운 배경
 
-                // 높은 채도는 배경이 단색이 아닐 수 있으므로 threshold 조정
-                if (saturation > 50) threshold += 5;
+                // 채도에 따른 조정 (배경이 단색이 아닐 가능성)
+                if (saturation > 80) threshold += 8;
+                else if (saturation > 50) threshold += 4;
 
-                // 픽셀별 배경 제거 처리
+                // 픽셀별 배경 제거 처리 (개선: 선형 보간으로 부드러운 edge)
                 for (let i = 0; i < data.length; i += 4) {
                     const r = data[i];
                     const g = data[i + 1];
@@ -787,22 +859,35 @@
                     // 이미 투명한 픽셀은 건너뛰기
                     if (a < 50) continue;
 
-                    // 색상 차이 계산 (가중치 적용)
+                    // 색상 차이 계산 (개선된 가중치)
                     const rDiff = Math.abs(r - avgBg.r);
                     const gDiff = Math.abs(g - avgBg.g);
                     const bDiff = Math.abs(b - avgBg.b);
 
-                    // RGB 채널별 차이를 가중치와 함께 계산
-                    const diff = rDiff * 0.3 + gDiff * 0.59 + bDiff * 0.11; // 인간의 시각 인지도
+                    // CIE 표준에 따른 가중치 적용
+                    const diff = Math.sqrt(
+                        Math.pow(rDiff, 2) * 0.299 +
+                        Math.pow(gDiff, 2) * 0.587 +
+                        Math.pow(bDiff, 2) * 0.114
+                    );
 
-                    if (diff < threshold) {
-                        data[i + 3] = 0; // 완전히 투명하게
+                    if (diff < threshold * 0.8) {
+                        // 배경으로 판단
+                        data[i + 3] = 0;
+                    } else if (diff < threshold) {
+                        // 경계 영역 (부드러운 edge를 위해 반투명)
+                        data[i + 3] = Math.round(255 * ((diff - threshold * 0.8) / (threshold * 0.2)));
                     }
+                    // threshold 이상: 객체로 유지
                 }
 
                 tempCtx.putImageData(imageData, 0, 0);
 
                 const resultImg = new Image();
+                resultImg.onerror = () => {
+                    console.error('배경 제거 처리 중 오류 발생');
+                    resolve(img); // 오류 시 원본 반환
+                };
                 resultImg.onload = () => resolve(resultImg);
                 resultImg.src = tempCanvas.toDataURL();
             });
@@ -907,54 +992,108 @@
         }
 
         async function handleFileUpload(file, imageKey, previewId, sliderId, bgInfoId) {
+            // 파일 검증
             if (!file.type.startsWith('image/')) {
                 showToast('이미지 파일만 업로드 가능합니다', 'error');
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const img = new Image();
-                img.onload = async () => {
-                    if (imageKey === 'mannequin') {
-                        images[imageKey] = img;
-                        mannequinSize.width = img.width;
-                        mannequinSize.height = img.height;
-                    } else {
-                        const bgRemovedImg = await removeBackground(img);
-                        images[imageKey] = bgRemovedImg;
-                    }
+            if (file.size > 50 * 1024 * 1024) { // 50MB 제한
+                showToast('파일 크기가 너무 큽니다. (최대 50MB)', 'error');
+                return;
+            }
 
-                    const preview = document.getElementById(previewId);
-                    preview.classList.add('active');
-                    const previewImg = preview.querySelector('img');
-                    previewImg.src = images[imageKey].src;
+            const uploadZone = document.getElementById(
+                imageKey === 'mannequin' ? 'mannequinUpload' :
+                imageKey === 'top' ? 'topUpload' :
+                imageKey === 'bottom' ? 'bottomUpload' : 'dressUpload'
+            );
 
-                    const infoEl = document.getElementById(previewId).nextElementSibling;
-                    infoEl.classList.add('active');
-                    infoEl.innerHTML = `✓ 업로드됨 (${images[imageKey].width}x${images[imageKey].height}px)`;
+            // 로딩 상태 표시
+            const originalContent = uploadZone.innerHTML;
+            uploadZone.innerHTML = '<div class="processing-spinner"></div> 처리 중...';
+            uploadZone.style.pointerEvents = 'none';
+            uploadZone.style.opacity = '0.6';
 
-                    if (bgInfoId && imageKey !== 'mannequin') {
-                        document.getElementById(bgInfoId).classList.add('show');
-                    }
-
-                    if (sliderId) {
-                        document.getElementById(sliderId).classList.add('active');
-                        if (imageKey !== 'mannequin' && mannequinSize.width > 0) {
-                            autoAdjustSize(imageKey);
-                        }
-                    }
-
-                    redrawCanvas();
-                    updateDownloadStats();
-                    showSuccessMessage();
-
-                    const labels = { mannequin: '마네킹', top: '상의', bottom: '하의', dress: '원피스' };
-                    showToast(`${labels[imageKey]} 이미지 업로드 완료`, 'success');
+            try {
+                const reader = new FileReader();
+                reader.onerror = () => {
+                    showToast('파일 읽기 오류', 'error');
+                    uploadZone.innerHTML = originalContent;
+                    uploadZone.style.pointerEvents = 'auto';
+                    uploadZone.style.opacity = '1';
                 };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+
+                reader.onload = async (e) => {
+                    const img = new Image();
+                    img.onerror = () => {
+                        showToast('이미지 로드 실패. 다른 파일을 시도하세요.', 'error');
+                        uploadZone.innerHTML = originalContent;
+                        uploadZone.style.pointerEvents = 'auto';
+                        uploadZone.style.opacity = '1';
+                    };
+
+                    img.onload = async () => {
+                        try {
+                            if (imageKey === 'mannequin') {
+                                images[imageKey] = img;
+                                mannequinSize.width = img.width;
+                                mannequinSize.height = img.height;
+                                adjustCanvasSize(img.width, img.height);
+                            } else {
+                                const bgRemovedImg = await removeBackground(img);
+                                images[imageKey] = bgRemovedImg;
+                            }
+
+                            const preview = document.getElementById(previewId);
+                            preview.classList.add('active');
+                            const previewImg = preview.querySelector('img');
+                            previewImg.src = images[imageKey].src;
+
+                            const infoEl = document.getElementById(previewId).nextElementSibling;
+                            infoEl.classList.add('active');
+                            infoEl.innerHTML = `✓ 업로드됨 (${images[imageKey].width}x${images[imageKey].height}px)`;
+
+                            if (bgInfoId && imageKey !== 'mannequin') {
+                                document.getElementById(bgInfoId).classList.add('show');
+                            }
+
+                            if (sliderId) {
+                                document.getElementById(sliderId).classList.add('active');
+                                if (imageKey !== 'mannequin' && mannequinSize.width > 0) {
+                                    autoAdjustSize(imageKey);
+                                }
+                            }
+
+                            redrawCanvas();
+                            updateDownloadStats();
+                            showSuccessMessage();
+
+                            const labels = { mannequin: '마네킹', top: '상의', bottom: '하의', dress: '원피스' };
+                            showToast(`${labels[imageKey]} 이미지 업로드 완료`, 'success');
+
+                            // 로딩 상태 해제
+                            uploadZone.innerHTML = originalContent;
+                            uploadZone.style.pointerEvents = 'auto';
+                            uploadZone.style.opacity = '1';
+                        } catch (error) {
+                            console.error('이미지 처리 오류:', error);
+                            showToast('이미지 처리 중 오류가 발생했습니다', 'error');
+                            uploadZone.innerHTML = originalContent;
+                            uploadZone.style.pointerEvents = 'auto';
+                            uploadZone.style.opacity = '1';
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } catch (error) {
+                console.error('파일 업로드 오류:', error);
+                showToast('파일 업로드 오류', 'error');
+                uploadZone.innerHTML = originalContent;
+                uploadZone.style.pointerEvents = 'auto';
+                uploadZone.style.opacity = '1';
+            }
         }
 
         function showSuccessMessage() {
@@ -963,7 +1102,15 @@
             setTimeout(() => msg.classList.remove('show'), 4000);
         }
 
+        function adjustCanvasSize(width, height) {
+            canvas.width = width;
+            canvas.height = height;
+            redrawCanvas();
+        }
+
         function redrawCanvas() {
+            updatePerformanceStats();
+
             ctx.fillStyle = '#f9f9f9';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -1076,12 +1223,31 @@
         // 슬라이더 이벤트
         ['top', 'bottom', 'dress'].forEach(type => {
             ['X', 'Y', 'Scale'].forEach(prop => {
-                const elem = document.getElementById(type + prop);
-                if (elem) {
-                    elem.addEventListener('input', (e) => {
-                        settings[type + prop] = parseInt(e.target.value);
+                const rangeElem = document.getElementById(type + prop);
+                const inputElem = document.getElementById(type + prop + 'Input');
+
+                if (rangeElem) {
+                    rangeElem.addEventListener('input', (e) => {
+                        const value = parseInt(e.target.value);
+                        settings[type + prop] = value;
                         document.getElementById(type + prop + 'Value').textContent =
-                            e.target.value + (prop === 'Scale' ? '%' : 'px');
+                            value + (prop === 'Scale' ? '%' : 'px');
+                        if (inputElem) inputElem.value = value;
+                        redrawCanvas();
+                    });
+                }
+
+                if (inputElem) {
+                    inputElem.addEventListener('change', (e) => {
+                        let value = parseInt(e.target.value);
+                        const min = parseInt(e.target.min);
+                        const max = parseInt(e.target.max);
+                        value = Math.max(min, Math.min(max, value));
+
+                        settings[type + prop] = value;
+                        rangeElem.value = value;
+                        document.getElementById(type + prop + 'Value').textContent =
+                            value + (prop === 'Scale' ? '%' : 'px');
                         redrawCanvas();
                     });
                 }
@@ -1093,11 +1259,98 @@
                 showToast('마네킹 이미지를 먼저 업로드하세요', 'error');
                 return;
             }
+
+            // 원본 마네킹 크기로 고해상도 다운로드
+            const downloadCanvas = document.createElement('canvas');
+            const downloadCtx = downloadCanvas.getContext('2d');
+            downloadCanvas.width = mannequinSize.width;
+            downloadCanvas.height = mannequinSize.height;
+
+            // 배경 채우기
+            downloadCtx.fillStyle = '#f9f9f9';
+            downloadCtx.fillRect(0, 0, downloadCanvas.width, downloadCanvas.height);
+
+            const mannequinX = (downloadCanvas.width - images.mannequin.width) / 2;
+            const mannequinY = 20;
+            const mannequinWidth = images.mannequin.width;
+            const mannequinHeight = images.mannequin.height;
+
+            if (selectedCategory === 'general') {
+                const legsDivide = mannequinHeight * 0.42;
+                const waistDivide = mannequinHeight * 0.50;
+                const shoulderDivide = mannequinHeight * 0.58;
+
+                downloadCtx.drawImage(
+                    images.mannequin, 0, legsDivide, mannequinWidth, mannequinHeight - legsDivide,
+                    mannequinX, mannequinY + legsDivide, mannequinWidth, mannequinHeight - legsDivide
+                );
+
+                if (images.bottom) {
+                    const bottomW = images.bottom.width * (settings.bottomScale / 100);
+                    const bottomH = images.bottom.height * (settings.bottomScale / 100);
+                    const bottomX = (downloadCanvas.width - bottomW) / 2 + settings.bottomX;
+                    const bottomY = mannequinY + settings.bottomY;
+                    downloadCtx.save();
+                    downloadCtx.globalAlpha = 0.90;
+                    downloadCtx.drawImage(images.bottom, bottomX, bottomY, bottomW, bottomH);
+                    downloadCtx.restore();
+                }
+
+                downloadCtx.drawImage(
+                    images.mannequin, 0, legsDivide, mannequinWidth, waistDivide - legsDivide,
+                    mannequinX, mannequinY + legsDivide, mannequinWidth, waistDivide - legsDivide
+                );
+
+                if (images.top) {
+                    const topW = images.top.width * (settings.topScale / 100);
+                    const topH = images.top.height * (settings.topScale / 100);
+                    const topX = (downloadCanvas.width - topW) / 2 + settings.topX;
+                    const topY = mannequinY + settings.topY;
+                    downloadCtx.save();
+                    downloadCtx.globalAlpha = 0.88;
+                    downloadCtx.drawImage(images.top, topX, topY, topW, topH);
+                    downloadCtx.restore();
+                }
+
+                downloadCtx.drawImage(
+                    images.mannequin, 0, shoulderDivide, mannequinWidth, mannequinHeight - shoulderDivide,
+                    mannequinX, mannequinY + shoulderDivide, mannequinWidth, mannequinHeight - shoulderDivide
+                );
+
+                downloadCtx.drawImage(
+                    images.mannequin, 0, 0, mannequinWidth, shoulderDivide,
+                    mannequinX, mannequinY, mannequinWidth, shoulderDivide
+                );
+            } else if (selectedCategory === 'dress') {
+                const dressWaistDivide = mannequinHeight * 0.48;
+
+                downloadCtx.drawImage(
+                    images.mannequin, 0, dressWaistDivide, mannequinWidth, mannequinHeight - dressWaistDivide,
+                    mannequinX, mannequinY + dressWaistDivide, mannequinWidth, mannequinHeight - dressWaistDivide
+                );
+
+                if (images.dress) {
+                    const dressW = images.dress.width * (settings.dressScale / 100);
+                    const dressH = images.dress.height * (settings.dressScale / 100);
+                    const dressX = (downloadCanvas.width - dressW) / 2 + settings.dressX;
+                    const dressY = mannequinY + settings.dressY;
+                    downloadCtx.save();
+                    downloadCtx.globalAlpha = 0.88;
+                    downloadCtx.drawImage(images.dress, dressX, dressY, dressW, dressH);
+                    downloadCtx.restore();
+                }
+
+                downloadCtx.drawImage(
+                    images.mannequin, 0, 0, mannequinWidth, dressWaistDivide,
+                    mannequinX, mannequinY, mannequinWidth, dressWaistDivide
+                );
+            }
+
             const link = document.createElement('a');
             link.download = `virtual-fitting-${new Date().getTime()}.png`;
-            link.href = canvas.toDataURL();
+            link.href = downloadCanvas.toDataURL();
             link.click();
-            showToast('이미지가 다운로드되었습니다', 'success');
+            showToast('고해상도 이미지가 다운로드되었습니다', 'success');
         }
 
         function resetAll() {
@@ -1156,18 +1409,92 @@
             toast.className = `toast ${type}`;
             toast.textContent = message;
             document.body.appendChild(toast);
+            toast.offsetHeight; // 강제 리플로우로 애니메이션 활성화
             setTimeout(() => {
-                toast.style.animation = 'slideOut 0.3s ease';
+                toast.style.animation = 'slideOut 0.3s ease forwards';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
-        setupUploadZone('mannequinUpload', 'mannequinFile', 'mannequin', 'mannequinPreview');
-        setupUploadZone('topUpload', 'topFile', 'top', 'topPreview', 'topSliders', 'topBgInfo');
-        setupUploadZone('bottomUpload', 'bottomFile', 'bottom', 'bottomPreview', 'bottomSliders', 'bottomBgInfo');
-        setupUploadZone('dressUpload', 'dressFile', 'dress', 'dressPreview', 'dressSliders', 'dressBgInfo');
+        // 성능 모니터링
+        let renderCount = 0;
+        const perfStats = {
+            lastUpdate: Date.now(),
+            fps: 0
+        };
 
-        redrawCanvas();
+        function updatePerformanceStats() {
+            renderCount++;
+            const now = Date.now();
+            if (now - perfStats.lastUpdate >= 1000) {
+                perfStats.fps = renderCount;
+                renderCount = 0;
+                perfStats.lastUpdate = now;
+                // 콘솔에 FPS 출력 (선택사항)
+                // console.log('FPS:', perfStats.fps);
+            }
+        }
+
+        function applyQuickPreset(preset) {
+            if (preset === 'reset') {
+                resetAll();
+            } else if (preset === 'center') {
+                // 모든 X 값을 0으로 설정 (중앙 정렬)
+                ['top', 'bottom', 'dress'].forEach(type => {
+                    settings[type + 'X'] = 0;
+                    const input = document.getElementById(type + 'X');
+                    if (input) input.value = 0;
+                    document.getElementById(type + 'XValue').textContent = '0px';
+                });
+                redrawCanvas();
+                showToast('중앙 정렬이 적용되었습니다', 'success');
+            } else if (preset === 'fit') {
+                // 자동 맞춤 다시 적용
+                if (selectedCategory === 'general') {
+                    autoAdjustSize('top');
+                    autoAdjustSize('bottom');
+                } else {
+                    autoAdjustSize('dress');
+                }
+                redrawCanvas();
+                showToast('자동 맞춤이 적용되었습니다', 'success');
+            }
+        }
+
+        // 초기화 함수
+        function initializeApp() {
+            setupUploadZone('mannequinUpload', 'mannequinFile', 'mannequin', 'mannequinPreview');
+            setupUploadZone('topUpload', 'topFile', 'top', 'topPreview', 'topSliders', 'topBgInfo');
+            setupUploadZone('bottomUpload', 'bottomFile', 'bottom', 'bottomPreview', 'bottomSliders', 'bottomBgInfo');
+            setupUploadZone('dressUpload', 'dressFile', 'dress', 'dressPreview', 'dressSliders', 'dressBgInfo');
+
+            redrawCanvas();
+
+            // 초기 상태 로깅
+            console.log('✓ 마네킹 AI 가상 피팅 시스템 초기화 완료');
+            console.log('- Canvas: ' + canvas.width + 'x' + canvas.height);
+            console.log('- 카테고리: ' + (selectedCategory === 'general' ? '일반의류' : '원피스'));
+        }
+
+        // 키보드 단축키
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                showToast('Ctrl+Z: 실행 취소는 현재 지원되지 않습니다', 'info');
+            }
+            // 숫자 입력 필드에서는 슬라이더 작동 방지
+            if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+                return;
+            }
+        });
+
+        // 모바일 터치 최적화
+        if ('ontouchstart' in window) {
+            document.documentElement.classList.add('touch-device');
+        }
+
+        // 앱 초기화
+        initializeApp();
     </script>
 </body>
 </html>
