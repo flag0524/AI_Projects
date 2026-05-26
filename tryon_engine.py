@@ -8,8 +8,9 @@ class TryOnEngine:
     def __init__(self):
         # 나무 팔 영역 검출을 위한 HSV 범위 (나무 색상: 갈색/황토색 계열)
         # 실제 이미지에 따라 튜닝이 필요할 수 있습니다.
-        self.lower_wood = np.array([10, 40, 40]) 
-        self.upper_wood = np.array([30, 255, 255])
+        # 나무 팔 색상 범위 확장 (밝은 베이지 ~ 어두운 갈색)
+        self.lower_wood = np.array([0, 30, 50]) 
+        self.upper_wood = np.array([40, 255, 255])
 
     def remove_background(self, img_pil):
         """의류 이미지의 배경을 제거합니다."""
@@ -66,15 +67,18 @@ class TryOnEngine:
             item_no_bg = self.remove_background(item_img)
             item_np = np.array(item_no_bg)
 
-            # 간단한 위치/크기 조정 (실제로는 랜드마크 기반이어야 하나, 여기서는 기본 비율 적용)
-            # 상의: 중앙 상단 / 하의: 중앙 하단
-            target_w = int(w * 0.6)
-            target_h = int(h * 0.5)
-            item_resized = cv2.resize(item_np, (target_w, target_h), interpolation=cv2.INTER_AREA)
+            # [튜닝] 마네킹 체형에 맞춘 정밀 비율 조정
+            if type == "top":
+                target_w = int(w * 0.75)  # 어깨 너비에 맞게 확장
+                target_h = int(h * 0.55)  # 상의 길이 최적화
+                start_y = int(h * 0.12)   # 넥라인을 목 위치로 상향 조정
+            else:
+                target_w = int(w * 0.65)
+                target_h = int(h * 0.45)
+                start_y = int(h * 0.52)   # 하의 시작 위치 조정
             
-            # 합성 위치 설정
-            start_y = int(h * 0.15) if type == "top" else int(h * 0.5)
             start_x = (w - target_w) // 2
+            item_resized = cv2.resize(item_np, (target_w, target_h), interpolation=cv2.INTER_AREA)
             
             # 합성 영역 슬라이싱
             end_y = start_y + target_h
