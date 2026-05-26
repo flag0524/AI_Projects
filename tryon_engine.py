@@ -69,13 +69,15 @@ class TryOnEngine:
 
             # [튜닝] 마네킹 체형에 맞춘 정밀 비율 조정
             if type == "top":
-                target_w = int(w * 0.75)  # 어깨 너비에 맞게 확장
-                target_h = int(h * 0.55)  # 상의 길이 최적화
-                start_y = int(h * 0.12)   # 넥라인을 목 위치로 상향 조정
+                # [정밀 튜닝] 상의: 어깨선을 더 넓히고 넥라인을 더 위로 올림
+                target_w = int(w * 0.82)  # 어깨 핏 확장
+                target_h = int(h * 0.52)  # 상의 길이 최적화
+                start_y = int(h * 0.08)   # 넥라인을 목 바로 아래로 밀착
             else:
-                target_w = int(w * 0.65)
-                target_h = int(h * 0.45)
-                start_y = int(h * 0.52)   # 하의 시작 위치 조정
+                # [정밀 튜닝] 하의: 상의 벨트 라인과 밀착시키고 폭 조정
+                target_w = int(w * 0.68)
+                target_h = int(h * 0.42)
+                start_y = int(h * 0.48)   # 상의 하단과 자연스럽게 연결
             
             start_x = (w - target_w) // 2
             item_resized = cv2.resize(item_np, (target_w, target_h), interpolation=cv2.INTER_AREA)
