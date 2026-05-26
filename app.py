@@ -14,7 +14,7 @@ def process_tryon(mannequin_img, top_img, bottom_img, mode):
     t_path = "temp_top.png"
     b_path = "temp_bottom.png"
     
-    # PIL 이미지를 파일로 저장 (엔진이 경로 기반으로 동작하므로)
+    # PIL 이미지를 파일로 저장
     mannequin_img.save(m_path)
     
     top_path = None
@@ -27,24 +27,21 @@ def process_tryon(mannequin_img, top_img, bottom_img, mode):
         bottom_img.save(b_path)
         bottom_path = b_path
 
-    # 모드에 따른 경로 필터링
     if mode == "상의만":
         bottom_path = None
     elif mode == "하의만":
         top_path = None
 
     try:
-        # 하이브리드 피팅 엔진 실행
         result = engine.fit_clothing_hybrid(m_path, top_path, bottom_path)
         return result
     except Exception as e:
         print(f"Error during fitting: {e}")
         return None
 
-# Gradio UI 구성
 with gr.Blocks(title="Blandu AI Try-On") as demo:
     gr.Markdown("# 👕 마네킹 AI 가상 피팅 시스템")
-    gr.Markdown("마네킹 이미지와 의류 이미지를 업로드하여 피팅 결과를 확인하세요. (나무 팔 영역 보존 기능 포함)")
+    gr.Markdown("마네킹 이미지와 의류 이미지를 업로드하여 피팅 결과를 확인하세요.")
     
     with gr.Row():
         with gr.Column():
@@ -57,7 +54,6 @@ with gr.Blocks(title="Blandu AI Try-On") as demo:
         with gr.Column():
             output_image = gr.Image(label="최종 피팅 결과")
 
-    # 버튼 클릭 이벤트 연결
     submit_btn.click(
         fn=process_tryon,
         inputs=[mannequin_input, top_input, bottom_input, mode_input],
@@ -65,4 +61,5 @@ with gr.Blocks(title="Blandu AI Try-On") as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    # 포트 번호를 명시하지 않음 -> Gradio가 자동으로 빈 포트 할당
+    demo.launch(server_name="0.0.0.0")
