@@ -121,19 +121,23 @@ class TryOnEngine:
             # 결과물을 다시 uint8로 변환하여 RGB 채널에 할당
             final_img[start_y:end_y, start_x:start_x+target_w, :3] = (blended_rgb * 255).astype(np.uint8)
 
-        # 마지막 단계: 나무 팔 영역을 다시 덮어씌워 보존 (Z-index 처리)
-        # 원본 마네킹의 팔 영역을 최종 이미지 위에 다시 올림
-        final_img = final_img.astype(float) / 255.0
-        mannequin_base = np.array(mannequin).astype(float) / 255.0
+        # [수정] Z-인덱스 및 레이어링 로직 전면 재구성
+        # 1. 최종 결과물을 담을 캔버스를 원본 마네킹으로 시작 (배경+몸통)
+        final_rgba = np.array(mannequin).astype(float) / 255.0
         
-        # 팔 마스크가 있는 부분만 원본으로 교체 (RGB 채널만 처리)
-        final_img_rgb = final_img[:, :, :3]
-        mannequin_base_rgb = mannequin_base[:, :, :3]
+        # 2. 옷 합성 (이미 위에서 final_img에 계산됨)
+        # final_img의 RGB 결과물을 가져옴
+        result_rgb = final_img.astype(float) / 255.0 if final_img.dtype == np.uint8 else final_img
         
-        # 마스크 적용 (RGB 3채널에 대해)
-        final_rgb = np.where(arm_mask_rgba == 1.0, mannequin_base_rgb, final_img_rgb)
+        # 3. [핵심] 팔 영역 복구: 옷이 팔을 덮지 않고, 팔이 옷 위에 오도록 처리
+        # 팔 마스크가 1인 곳은 원본 마네킹의 팔 색상을, 0인 곳은 합성된 옷 색상을 사용
+        mannequin_rgb = np.array(mannequin.convert("RGB")).astype(float) / 255.0
         
-        return Image.fromarray((final_rgb * 255).astype(np.uint8))
+        # arm_mask_rgba를 사용하여 픽셀 단위로 결정
+        # final_rgb = (팔마스크 * 원본마네킹) + ((1-팔마스크) * 합성결과)
+        final_rgb = (arm_mask_rgba * mannequin_rgb) + ((1 - arm_mask_rgba) * result_rgb[:, :, :3])
+        
+        return Image.fromarray((np.clip(final_rgb, 0, 1) * 255).astype(np.uint8))
 
 # AI 엔진 템플릿 (IDM-VTON 등)
 def fit_clothing_ai(mannequin_img, clothing_img):
