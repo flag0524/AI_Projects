@@ -17,17 +17,29 @@ class TryOnEngine:
         try:
             # rembg를 사용하여 배경 제거
             result = remove(img_pil)
+            
+            # [추가] 제거 후 이미지가 완전히 투명한지 확인 (모든 픽셀의 알파값이 0인지)
+            res_np = np.array(result)
+            if res_np.shape[2] == 4 and np.sum(res_np[:, :, 3]) == 0:
+                print("[WARN] rembg removed everything. Using fallback.")
+                raise ValueError("All pixels removed")
+                
             return result
         except Exception as e:
-            print(f"Background removal failed: {e}")
-            # 폴백: 흰색 배경을 투명하게 처리
+            print(f"Background removal fallback triggered: {e}")
+            # [개선] 폴백: 더 정교한 배경 제거 (밝은 영역 제거)
             img_np = np.array(img_pil.convert("RGB"))
-            mask = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-            _, alpha = cv2.threshold(mask, 240, 255, cv2.THRESH_BINARY_INV)
+            # 그레이스케일 변환 후 임계값 적용 (흰색/밝은 배경 제거)
+            gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+            _, alpha = cv2.threshold(gray, 230, 255, cv2.THRESH_BINARY_INV)
+            
+            # 노이즈 제거 (작은 구멍 메우기)
+            kernel = np.ones((3,3), np.uint8)
+            alpha = cv2.morphologyEx(alpha, cv2.MORPH_CLOSE, kernel)
             
             img_rgba = cv2.cvtColor(img_np, cv2.COLOR_RGB2RGBA)
             img_rgba[:, :, 3] = alpha
-            return Image.fromarray(cv2.cvtColor(img_rgba, cv2.COLOR_RGBA2RGB)) # 단순화하여 반환
+            return Image.fromarray(img_rgba)
 
     def segment_arms(self, mannequin_img_pil):
         """마네킹 이미지에서 나무 팔 영역의 마스크를 생성합니다."""

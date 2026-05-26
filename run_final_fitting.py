@@ -25,6 +25,15 @@ def main():
     
     try:
         # 경로 객체를 문자열로 변환하여 전달
+        # 디버깅을 위해 엔진 내부의 remove_background를 개별 테스트
+        top_no_bg = engine.remove_background(Image.open(str(top_path)))
+        bottom_no_bg = engine.remove_background(Image.open(str(bottom_path)))
+        
+        # 배경 제거된 결과물을 따로 저장해서 확인
+        top_no_bg.save("output/hybrid/debug_top.png")
+        bottom_no_bg.save("output/hybrid/debug_bottom.png")
+        print("Debug images saved: debug_top.png, debug_bottom.png")
+        
         result_img = engine.fit_clothing_hybrid(str(mannequin_path), str(top_path), str(bottom_path))
         result_img.save(str(output_path))
         print(f"Success: {output_path}")
