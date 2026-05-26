@@ -1,38 +1,35 @@
 import os
-import glob
+from pathlib import Path
 from tryon_engine import TryOnEngine
 
 def main():
     engine = TryOnEngine()
     
-    # 1. 마네킹 이미지 찾기 (파일명 상관없이 폴더 내 첫 번째 png 파일 선택)
-    mannequin_files = glob.glob("input/raw_photos/*.png")
-    # ITEM-001, ITEM-002가 아닌 파일을 마네킹으로 간주
-    mannequin_path = None
-    for f in mannequin_files:
-        if "ITEM" not in os.path.basename(f):
-            mannequin_path = f
-            break
+    # pathlib를 사용하여 한글 경로 및 유니코드 처리
+    base_dir = Path("input/raw_photos")
+    mannequin_path = base_dir / "마네킹.png"
+    top_path = base_dir / "ITEM-001.png"
+    bottom_path = base_dir / "ITEM-002.png"
+    output_path = Path("output/hybrid/FINAL_NATURAL_FIT.png")
     
-    if not mannequin_path:
-        print("Error: 마네킹 이미지를 찾을 수 없습니다.")
+    # 출력 폴더 생성
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # 경로 존재 확인
+    if not mannequin_path.exists():
+        print(f"Error: 마네킹 파일을 찾을 수 없습니다: {mannequin_path}")
         return
 
-    top_path = "input/raw_photos/ITEM-001.png"
-    bottom_path = "input/raw_photos/ITEM-002.png"
-    output_path = "output/hybrid/FINAL_NATURAL_FIT.png"
-    
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
     print(f"Processing natural fitting...")
     print(f"Using mannequin: {mannequin_path}")
     
     try:
-        result_img = engine.fit_clothing_hybrid(mannequin_path, top_path, bottom_path)
-        result_img.save(output_path)
+        # 경로 객체를 문자열로 변환하여 전달
+        result_img = engine.fit_clothing_hybrid(str(mannequin_path), str(top_path), str(bottom_path))
+        result_img.save(str(output_path))
         print(f"Success: {output_path}")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error during fitting: {e}")
 
 if __name__ == "__main__":
     main()
