@@ -18,9 +18,17 @@ def main():
     base_dir = "input/raw_photos"
     
     # 키워드 기반 파일 찾기 (한글 인코딩 문제 해결)
-    mannequin_path = Path(base_dir) / "mannequin.png"
-    top_path = Path(base_dir) / "top.png"
-    bottom_path = Path(base_dir) / "bottom.png"
+    # 파일 존재 여부 확인 및 강제 매칭 로직
+    all_files = list(Path(base_dir).glob("*.png"))
+    print(f"Available files: {[f.name for f in all_files]}")
+    
+    mannequin_path = next((f for f in all_files if "mannequin" in f.name.lower() or "마네킹" in f.name), None)
+    top_path = next((f for f in all_files if "top" in f.name.lower() or "ITEM-001" in f.name), None)
+    bottom_path = next((f for f in all_files if "bottom" in f.name.lower() or "ITEM-002" in f.name), None)
+    
+    if not mannequin_path:
+        print("Error: 마네킹 이미지를 찾을 수 없습니다.")
+        return
     
     output_dir = Path("output/hybrid")
     output_path = output_dir / "FINAL_NATURAL_FIT.png"
