@@ -112,7 +112,11 @@ class TryOnEngine:
         final_img = Image.alpha_composite(mannequin.copy(), clothing_final)
         arm_mask = self._generate_arm_mask(mannequin)
         final_img.paste(mannequin, (0,0), arm_mask)
-        final_img = final_img.filter(ImageFilter.SMOOTH_BOX) 
+        # Pillow 버전에 따라 SMOOTH_BOX가 없을 수 있으므로 SMOOTH로 대체
+        try:
+            final_img = final_img.filter(ImageFilter.SMOOTH_BOX)
+        except AttributeError:
+            final_img = final_img.filter(ImageFilter.SMOOTH)
         
         return final_img.convert("RGB")
 
