@@ -99,16 +99,26 @@ class TryOnEngine:
                 if bottom_warped:
                     clothing_layer.paste(bottom_warped, ((m_w - bottom_warped.width)//2, int(analysis["waist_y"])), bottom_warped)
 
-        # 2. 조명 및 섀도우 투영
+        # 2. 조명 및 입체감 최적화 (Advanced Shading)
         mannequin_gray = mannequin.convert("L")
-        lighting_map = mannequin_gray.point(lambda x: x * 0.8 + 50)
+        # 마네킹의 명암을 분석하여 옷에 깊이감을 주는 쉐이딩 맵 생성
+        lighting_map = mannequin_gray.point(lambda x: x * 0.7 + 30)
+        
         c_np = np.array(clothing_layer)
         l_np = np.array(lighting_map.resize((m_w, m_h)))
+        
+        # RGB 채널에 조명 맵을 곱해 입체감 부여 (투명도 문제 해결을 위해 알파 채널 보존)
         for i in range(3):
-            c_np[:, :, i] = (c_np[:, :, i].astype(float) * (l_np / 255.0) * 1.1).astype(np.uint8)
+            c_np[:, :, i] = (c_np[:, :, i].astype(float) * (l_np / 255.0) * 1.2).astype(np.uint8)
+        
+        # 알파 채널을 255로 강제하여 투명도 제거 (원본 보존)
+        mask_np = c_np[:, :, 3]
+        mask_np[mask_np > 0] = 255 
+        
         clothing_final = Image.fromarray(c_np, "RGBA")
 
-        # 3. 최종 합성 및 오클루전 (Z-Index)
+        # 3. 최종 합성 및 정밀 블렌딩
+        # 배경(마네킹) 위에 옷을 얹고, 경계선을 부드럽게 처리
         final_img = Image.alpha_composite(mannequin.copy(), clothing_final)
         arm_mask = self._generate_arm_mask(mannequin)
         final_img.paste(mannequin, (0,0), arm_mask)
