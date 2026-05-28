@@ -18,9 +18,9 @@ def main():
     base_dir = "input/raw_photos"
     
     # 키워드 기반 파일 찾기 (한글 인코딩 문제 해결)
-    mannequin_path = find_file_by_keyword(base_dir, "마네킹")
-    top_path = find_file_by_keyword(base_dir, "ITEM-001")
-    bottom_path = find_file_by_keyword(base_dir, "ITEM-002")
+    mannequin_path = Path(base_dir) / "mannequin.png"
+    top_path = Path(base_dir) / "top.png"
+    bottom_path = Path(base_dir) / "bottom.png"
     
     output_dir = Path("output/hybrid")
     output_path = output_dir / "FINAL_NATURAL_FIT.png"
