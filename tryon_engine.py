@@ -35,6 +35,56 @@ class TryOnEngine:
 
     def fit_clothing_hybrid(self, mannequin_path, top_path=None, bottom_path=None, dress_path=None):
         """
+        [REAL-WORLD OPERATION MODE] 
+        의류 생성(Generation) 배제 $\rightarrow$ 원본 보존 기반 워핑(Warping) 최우선 적용
+        """
+        mannequin = Image.open(mannequin_path).convert("RGBA")
+        m_w, m_h = mannequin.size
+        analysis = self.analyze_mannequin(mannequin)
+        clothing_layer = Image.new("RGBA", (m_w, m_h), (0,0,0,0))
+
+        # [실무 핵심] 원본 보존형 리사이징 및 워핑 함수
+        def apply_preserved_warping(img_path, target_w, target_h_limit, warp_type="body"):
+            img = Image.open(img_path).convert("RGBA")
+            no_bg = self.remove_background(img)
+            
+            # 1. 비율 보존 스케일링 (로고/패턴 왜곡 절대 금지)
+            orig_w, orig_h = no_bg.size
+            aspect = orig_w / orig_h
+            final_w = target_w
+            final_h = int(final_w / aspect)
+            if final_h > target_h_limit:
+                final_h = target_h_limit
+                final_w = int(final_h * aspect)
+            
+            resized = no_bg.resize((final_w, final_h), Image.Resampling.LANCZOS)
+            
+            # 2. 기하학적 워핑 (Mesh Warp) - 픽셀 값은 유지, 위치만 변경
+            resized_np = np.array(resized)
+            rows, cols, ch = resized_np.shape
+            map_x, map_y = np.meshgrid(np.arange(cols), np.arange(rows))
+            
+            if warp_type == "body":
+                # 체형 곡률에 맞게 픽셀 좌표만 미세 조정 (원본 픽셀 유지)
+                warp_factor = 0.02 * (map_y / rows)
+                map_x = map_x + (cols/2 - map_x) * warp_factor
+            
+            warped_np = cv2.remap(resized_np, map_x.astype(np.float32), map_y.astype(np.float32), 
+                                  interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+            return Image.fromarray(warped_np)
+
+        # 1. 의류 배치 (Warping 기반)
+        if dress_path:
+            dress_warped = apply_preserved_warping(dress_path, int(analysis["shoulder_w"]), int(m_h * 0.82))
+            clothing_layer.paste(dress_warped, ((m_w - dress_warped.width)//2, int(analysis["neck_y"])), dress_warped)
+        elif top_path:
+            top_warped = apply_preserved_warping(top_path, int(analysis["shoulder_w"]), int(m_h * 0.50))
+            clothing_layer.paste(top_warped, ((m_w - top_warped.width)//2, int(analysis["neck_y"])), top_warped)
+            
+            if bottom_path:
+                bottom_warped = apply_preserved_warping(bottom_path, int(analysis["hip_w"]), int(m_h * 0.55))
+                clothing_layer.paste(bottom_warped, ((m_w - bottom_warped.width)//2, int(analysis["waist_y"])), bottom_warped)
+        """
         [QUALITY OPTIMIZATION] 우선순위가 적용된 하이브리드 피팅 엔진
         1. 원본 보존 -> 2. 자연스러운 핏 -> 3. 패턴/로고 보존 -> 4. 상업적 품질
         """
