@@ -77,13 +77,20 @@ class TryOnEngine:
         if dress_path:
             dress_warped = apply_preserved_warping(dress_path, int(analysis["shoulder_w"]), int(m_h * 0.82))
             clothing_layer.paste(dress_warped, ((m_w - dress_warped.width)//2, int(analysis["neck_y"])), dress_warped)
-        elif top_path:
-            top_warped = apply_preserved_warping(top_path, int(analysis["shoulder_w"]), int(m_h * 0.50))
-            clothing_layer.paste(top_warped, ((m_w - top_warped.width)//2, int(analysis["neck_y"])), top_warped)
-            
-            if bottom_path:
+        elif top_path and top_path != "None":
+            try:
+                top_warped = apply_preserved_warping(top_path, int(analysis["shoulder_w"]), int(m_h * 0.50))
+                clothing_layer.paste(top_warped, ((m_w - top_warped.width)//2, int(analysis["neck_y"])), top_warped)
+            except Exception as e:
+                print(f"[Warning] Top fitting failed: {e}")
+        
+        # 상의 유무와 관계없이 하의가 있다면 피팅 진행
+        if bottom_path and bottom_path != "None":
+            try:
                 bottom_warped = apply_preserved_warping(bottom_path, int(analysis["hip_w"]), int(m_h * 0.55))
                 clothing_layer.paste(bottom_warped, ((m_w - bottom_warped.width)//2, int(analysis["waist_y"])), bottom_warped)
+            except Exception as e:
+                print(f"[Warning] Bottom fitting failed: {e}")
         """
         [QUALITY OPTIMIZATION] 우선순위가 적용된 하이브리드 피팅 엔진
         1. 원본 보존 -> 2. 자연스러운 핏 -> 3. 패턴/로고 보존 -> 4. 상업적 품질
