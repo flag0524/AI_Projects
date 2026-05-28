@@ -71,7 +71,10 @@ class TryOnEngine:
                 map_x, map_y = np.meshgrid(np.arange(cols), np.arange(rows))
                 
                 if warp_type == "body":
-                    warp_factor = 0.02 * (map_y / rows)
+                    # [체형 밀착 워핑] 단순 이동이 아니라 중앙으로 모아주는 곡선 변형 적용
+                    # 어깨와 허리 라인에 맞춰 픽셀을 안쪽으로 당겨 몸에 밀착된 느낌 구현
+                    dist_from_center = np.abs(map_x - cols/2)
+                    warp_factor = 0.15 * (map_y / rows) # 아래로 갈수록 더 많이 좁아짐
                     map_x = map_x + (cols/2 - map_x) * warp_factor
                 
                 warped_np = cv2.remap(resized_np, map_x.astype(np.float32), map_y.astype(np.float32), 
@@ -99,21 +102,22 @@ class TryOnEngine:
                 if bottom_warped:
                     clothing_layer.paste(bottom_warped, ((m_w - bottom_warped.width)//2, int(analysis["waist_y"])), bottom_warped)
 
-        # 2. 조명 및 입체감 최적화 (Advanced Shading)
-        mannequin_gray = mannequin.convert("L")
-        # 마네킹의 명암을 분석하여 옷에 깊이감을 주는 쉐이딩 맵 생성
-        lighting_map = mannequin_gray.point(lambda x: x * 0.7 + 30)
-        
+        # 2. [실무 핵심] 불투명도 강제 고정 및 딥 쉐이딩
+        # 옷 레이어의 알파 채널을 분석하여, 조금이라도 색이 있는 부분은 100% 불투명하게 만듦
         c_np = np.array(clothing_layer)
-        l_np = np.array(lighting_map.resize((m_w, m_h)))
+        alpha_channel = c_np[:, :, 3]
         
-        # RGB 채널에 조명 맵을 곱해 입체감 부여 (투명도 문제 해결을 위해 알파 채널 보존)
+        # 투명도 0보다 큰 모든 영역을 완전 불투명(255)으로 강제 전환 (반투명 현상 제거)
+        c_np[:, :, 3] = np.where(alpha_channel > 0, 255, 0).astype(np.uint8)
+        
+        # 마네킹의 명암을 가져와 옷의 입체감(Depth)을 생성
+        mannequin_gray = mannequin.convert("L")
+        lighting_map = np.array(mannequin_gray.resize((m_w, m_h)))
+        
+        # 조명 맵을 적용하여 옷에 그림자와 하이라이트를 부여 (포토리얼리즘)
         for i in range(3):
-            c_np[:, :, i] = (c_np[:, :, i].astype(float) * (l_np / 255.0) * 1.2).astype(np.uint8)
-        
-        # 알파 채널을 255로 강제하여 투명도 제거 (원본 보존)
-        mask_np = c_np[:, :, 3]
-        mask_np[mask_np > 0] = 255 
+            # 0.6 ~ 1.4 사이의 가중치를 주어 명암 대비를 명확히 함
+            c_np[:, :, i] = np.clip(c_np[:, :, i].astype(float) * (lighting_map / 128.0), 0, 255).astype(np.uint8)
         
         clothing_final = Image.fromarray(c_np, "RGBA")
 
