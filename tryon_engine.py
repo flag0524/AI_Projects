@@ -68,12 +68,21 @@ class TryOnEngine:
             c_np[:, :, i] = (c_np[:, :, i].astype(float) * (l_np / 255.0) * 1.1).astype(np.uint8)
         clothing_final = Image.fromarray(c_np, "RGBA")
 
-        # 3. 최종 합성 및 오클루전 처리 (Z-Index)
+        # [NEGATIVE PROMPT Guardrail] 최종 합성 및 오클루전 처리
+        
+        # 1. Floating Clothes & Cloth Penetration 방지: Z-Index 엄격 적용
+        # 마네킹 몸통 -> 의류 -> 마네킹 팔 순서로 합성
         final_img = Image.alpha_composite(mannequin.copy(), clothing_final)
+        
+        # 2. Broken Anatomy & Extra Arms 방지: 원본 팔 영역 정밀 복구
         arm_mask = self._generate_arm_mask(mannequin)
         final_img.paste(mannequin, (0,0), arm_mask)
         
-        return final_img.filter(ImageFilter.SMOOTH).convert("RGB")
+        # 3. Blurry Details & Oversaturated Texture 방지: 
+        # 과도한 필터링을 배제하고 엣지 소프트닝만 적용하여 선명도 유지
+        final_img = final_img.filter(ImageFilter.SMOOTH_BOX) 
+        
+        return final_img.convert("RGB")
 
     def _generate_arm_mask(self, mannequin):
         m_np = np.array(mannequin.convert("RGB"))
