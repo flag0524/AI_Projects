@@ -71,12 +71,10 @@ class TryOnEngine:
                 map_x, map_y = np.meshgrid(np.arange(cols), np.arange(rows))
                 
                 if warp_type == "body":
-                    # [S-Curve 입체 워핑] 체형의 굴곡(어깨-허리-골반)을 반영한 비선형 변형
-                    # y좌표에 따라 x축 수축률을 다르게 적용하여 '입체감' 생성
+                    # [정밀 핏 워핑] 과도한 왜곡을 줄이고 실제 옷의 형태를 보존
                     normalized_y = map_y / rows
-                    # 0(상단) -> 0.4(허리) -> 1.0(하단) 순으로 수축률 변화
-                    # 허리 부분(0.4)에서 가장 많이 수축되어 몸에 밀착되는 효과
-                    warp_curve = np.sin(normalized_y * np.pi) * 0.2 + 0.05
+                    # 허리 부분만 살짝 조여주고, 어깨 라인은 원본을 최대한 유지
+                    warp_curve = np.sin(normalized_y * np.pi) * 0.08 
                     map_x = map_x + (cols/2 - map_x) * warp_curve
                 
                 warped_np = cv2.remap(resized_np, map_x.astype(np.float32), map_y.astype(np.float32), 
@@ -116,10 +114,12 @@ class TryOnEngine:
         mannequin_gray = mannequin.convert("L")
         lighting_map = np.array(mannequin_gray.resize((m_w, m_h)))
         
-        # 조명 맵을 적용하여 옷에 그림자와 하이라이트를 부여 (포토리얼리즘)
+        # [색상 복구] 단순 곱셈이 아닌 소프트 라이트 블렌딩 적용
+        # 원본 색상을 최대한 보존하면서 마네킹의 명암만 입힘
         for i in range(3):
-            # 0.6 ~ 1.4 사이의 가중치를 주어 명암 대비를 명확히 함
-            c_np[:, :, i] = np.clip(c_np[:, :, i].astype(float) * (lighting_map / 128.0), 0, 255).astype(np.uint8)
+            # lighting_map을 0.5~1.5 범위로 정규화하여 색상 타버림(White-out) 방지
+            light_factor = (lighting_map / 255.0) * 1.0 + 0.5
+            c_np[:, :, i] = np.clip(c_np[:, :, i].astype(float) * light_factor, 0, 255).astype(np.uint8)
         
         clothing_final = Image.fromarray(c_np, "RGBA")
 
