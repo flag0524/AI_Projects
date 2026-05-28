@@ -34,6 +34,45 @@ class TryOnEngine:
         }
 
     def fit_clothing_hybrid(self, mannequin_path, top_path=None, bottom_path=None, dress_path=None):
+        """
+        [QUALITY OPTIMIZATION] 우선순위가 적용된 하이브리드 피팅 엔진
+        1. 원본 보존 -> 2. 자연스러운 핏 -> 3. 패턴/로고 보존 -> 4. 상업적 품질
+        """
+        mannequin = Image.open(mannequin_path).convert("RGBA")
+        m_w, m_h = mannequin.size
+        analysis = self.analyze_mannequin(mannequin)
+        clothing_layer = Image.new("RGBA", (m_w, m_h), (0,0,0,0))
+
+        # [Priority 1 & 3] 의류 원본 및 패턴/로고 보존 리사이징 로직
+        def get_preserved_resize(img_path, target_w, target_h_limit):
+            img = Image.open(img_path).convert("RGBA")
+            no_bg = self.remove_background(img)
+            
+            orig_w, orig_h = no_bg.size
+            aspect = orig_w / orig_h
+            
+            # 비율 보존형 스케일링 (로고 왜곡 방지)
+            final_w = target_w
+            final_h = int(final_w / aspect)
+            
+            # 과도한 늘어남 방지 (자연스러운 핏)
+            if final_h > target_h_limit:
+                final_h = target_h_limit
+                final_w = int(final_h * aspect)
+                
+            return no_bg.resize((final_w, final_h), Image.Resampling.LANCZOS)
+
+        # 1. 의류 배치
+        if dress_path:
+            dress_resized = get_preserved_resize(dress_path, int(analysis["shoulder_w"]), int(m_h * 0.82))
+            clothing_layer.paste(dress_resized, ((m_w - dress_resized.width)//2, int(analysis["neck_y"])), dress_resized)
+        elif top_path:
+            top_resized = get_preserved_resize(top_path, int(analysis["shoulder_w"]), int(m_h * 0.50))
+            clothing_layer.paste(top_resized, ((m_w - top_resized.width)//2, int(analysis["neck_y"])), top_resized)
+            
+            if bottom_path:
+                bottom_resized = get_preserved_resize(bottom_path, int(analysis["hip_w"]), int(m_h * 0.55))
+                clothing_layer.paste(bottom_resized, ((m_w - bottom_resized.width)//2, int(analysis["waist_y"])), bottom_resized)
         mannequin = Image.open(mannequin_path).convert("RGBA")
         m_w, m_h = mannequin.size
         analysis = self.analyze_mannequin(mannequin)
