@@ -71,11 +71,13 @@ class TryOnEngine:
                 map_x, map_y = np.meshgrid(np.arange(cols), np.arange(rows))
                 
                 if warp_type == "body":
-                    # [체형 밀착 워핑] 단순 이동이 아니라 중앙으로 모아주는 곡선 변형 적용
-                    # 어깨와 허리 라인에 맞춰 픽셀을 안쪽으로 당겨 몸에 밀착된 느낌 구현
-                    dist_from_center = np.abs(map_x - cols/2)
-                    warp_factor = 0.15 * (map_y / rows) # 아래로 갈수록 더 많이 좁아짐
-                    map_x = map_x + (cols/2 - map_x) * warp_factor
+                    # [S-Curve 입체 워핑] 체형의 굴곡(어깨-허리-골반)을 반영한 비선형 변형
+                    # y좌표에 따라 x축 수축률을 다르게 적용하여 '입체감' 생성
+                    normalized_y = map_y / rows
+                    # 0(상단) -> 0.4(허리) -> 1.0(하단) 순으로 수축률 변화
+                    # 허리 부분(0.4)에서 가장 많이 수축되어 몸에 밀착되는 효과
+                    warp_curve = np.sin(normalized_y * np.pi) * 0.2 + 0.05
+                    map_x = map_x + (cols/2 - map_x) * warp_curve
                 
                 warped_np = cv2.remap(resized_np, map_x.astype(np.float32), map_y.astype(np.float32), 
                                       interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
@@ -122,15 +124,17 @@ class TryOnEngine:
         clothing_final = Image.fromarray(c_np, "RGBA")
 
         # 3. 최종 합성 및 정밀 블렌딩
-        # 배경(마네킹) 위에 옷을 얹고, 경계선을 부드럽게 처리
-        final_img = Image.alpha_composite(mannequin.copy(), clothing_final)
+        # 옷의 외곽선을 부드럽게 처리하여 '붙여놓은 느낌' 제거
+        clothing_final_blurred = clothing_final.filter(ImageFilter.GaussianBlur(radius=1))
+        
+        final_img = Image.alpha_composite(mannequin.copy(), clothing_final_blurred)
+        
+        # 오클루전 처리 (팔이 옷 앞으로 나오게 함)
         arm_mask = self._generate_arm_mask(mannequin)
         final_img.paste(mannequin, (0,0), arm_mask)
-        # Pillow 버전에 따라 SMOOTH_BOX가 없을 수 있으므로 SMOOTH로 대체
-        try:
-            final_img = final_img.filter(ImageFilter.SMOOTH_BOX)
-        except AttributeError:
-            final_img = final_img.filter(ImageFilter.SMOOTH)
+        
+        # 전체적인 톤 일치를 위한 최종 스무딩
+        final_img = final_img.filter(ImageFilter.SMOOTH)
         
         return final_img.convert("RGB")
 
