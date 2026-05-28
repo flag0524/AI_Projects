@@ -1,6 +1,0 @@
-{
-  "standard": "{품번}_{preset}_{date}.jpg",
-  "hybrid": "{품번}_{muse}_{preset}_{date}.jpg",
-  "codi": "{codi_id}_{muse}_{preset}_{date}.jpg",
-  "date_format": "%Y%m%d"
-}

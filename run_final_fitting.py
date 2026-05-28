@@ -7,7 +7,6 @@ from tryon_engine import TryOnEngine
 def main():
     engine = TryOnEngine()
     
-    # 경로 설정
     base_dir = Path("input/raw_photos")
     mannequin_path = base_dir / "마네킹.png"
     top_path = base_dir / "ITEM-001.png"
@@ -24,7 +23,7 @@ def main():
     print(f"Processing natural fitting...")
     
     try:
-        # 1. 배경 제거 단계 개별 테스트 및 저장 (디버깅용)
+        # 1. 배경 제거 단계 테스트 및 저장
         print("Step 1: Removing background from clothing...")
         top_img = Image.open(str(top_path))
         bottom_img = Image.open(str(bottom_path))
@@ -34,7 +33,6 @@ def main():
         
         top_no_bg.save(str(output_dir / "debug_top_no_bg.png"))
         bottom_no_bg.save(str(output_dir / "debug_bottom_no_bg.png"))
-        print("Debug: Background removed images saved.")
         
         # 2. 하이브리드 피팅 실행
         print("Step 2: Fitting clothing to mannequin...")
