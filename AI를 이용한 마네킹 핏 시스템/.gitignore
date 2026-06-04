@@ -1,0 +1,47 @@
+# ── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ── Node / Frontend ─────────────────────────────────
+node_modules/
+dist/
+.vite/
+
+# ── 가상환경·모델·런타임 산출물 ──────────────────────
+backend/.venv/
+backend/storage/uploads/
+backend/storage/results/
+backend/storage/models/
+storage/
+*.safetensors
+*.bin
+*.ckpt
+*.pth
+*.onnx
+
+# ── 파인튜닝 산출물·데이터 ──────────────────────────
+finetune/output/
+finetune/dataset/raw/
+finetune/dataset/val/
+
+# ── 로그·디버그 ─────────────────────────────────────
+*.log
+dbg_*.png
+diag*.log
+sd15_test.log
+torch_install.log
+
+# ── 환경설정(민감) ──────────────────────────────────
+# .env 는 비밀/환경별 설정이므로 커밋 제외. 템플릿은 deploy/cloud-gpu/.env.gpu 로 제공.
+backend/.env
+
+# ── OS / 에디터 ─────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
