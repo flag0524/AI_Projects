@@ -1,48 +1,162 @@
 import { useRef, useState } from 'react'
+import { UploadIcon, PlusIcon, TrashIcon, ImageIcon } from './Icons.jsx'
 
 const GARMENT_TYPES = [
-  { value: 'top', label: '상의' },
-  { value: 'bottom', label: '하의' },
-  { value: 'dress', label: '원피스' },
+  { value: 'top',       label: '상의' },
+  { value: 'bottom',    label: '하의' },
+  { value: 'dress',     label: '원피스' },
   { value: 'accessory', label: '액세서리' },
 ]
 
-function ImageDropZone({ label, onFile, preview, accept = 'image/*' }) {
+const s = {
+  label: {
+    fontSize: '10px',
+    fontWeight: 500,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color: 'var(--text-2)',
+    marginBottom: '8px',
+    display: 'block',
+  },
+  dropzone: (active, hasFile) => ({
+    border: `1px dashed ${active ? 'var(--text-1)' : hasFile ? 'var(--border)' : 'var(--border-2)'}`,
+    borderRadius: 'var(--radius)',
+    background: active ? '#F0EFEc' : hasFile ? 'var(--surface)' : 'transparent',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    overflow: 'hidden',
+    position: 'relative',
+  }),
+}
+
+function DropZone({ label, onFile, preview, compact = false }) {
   const inputRef = useRef()
   const [dragging, setDragging] = useState(false)
 
   const handleDrop = (e) => {
-    e.preventDefault()
-    setDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) onFile(file)
+    e.preventDefault(); setDragging(false)
+    const f = e.dataTransfer.files[0]
+    if (f) onFile(f)
   }
 
   return (
     <div
-      className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors
-        ${dragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400 bg-gray-50'}`}
+      style={s.dropzone(dragging, !!preview)}
       onClick={() => inputRef.current.click()}
       onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
     >
       <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        className="hidden"
+        ref={inputRef} type="file" accept="image/*"
+        style={{ display: 'none' }}
         onChange={(e) => e.target.files[0] && onFile(e.target.files[0])}
       />
       {preview ? (
-        <img src={preview} alt={label} className="mx-auto max-h-40 object-contain rounded-lg" />
+        <div style={{ position: 'relative' }}>
+          <img
+            src={preview} alt={label}
+            style={{
+              width: '100%',
+              height: compact ? '120px' : '200px',
+              objectFit: 'contain',
+              display: 'block',
+              background: '#F7F6F3',
+            }}
+          />
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(0,0,0,0)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            opacity: 0, transition: 'opacity 0.15s',
+          }}
+            onMouseEnter={e => e.currentTarget.style.opacity = 1}
+            onMouseLeave={e => e.currentTarget.style.opacity = 0}
+          >
+            <div style={{
+              background: 'rgba(17,17,16,0.75)',
+              color: '#fff',
+              fontSize: '11px',
+              letterSpacing: '0.06em',
+              padding: '6px 12px',
+              borderRadius: '2px',
+            }}>변경하기</div>
+          </div>
+        </div>
       ) : (
-        <div className="py-6">
-          <div className="text-3xl mb-2">📁</div>
-          <p className="text-sm text-gray-500">{label}</p>
-          <p className="text-xs text-gray-400 mt-1">클릭 또는 드래그&드롭</p>
+        <div style={{
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: '10px',
+          padding: compact ? '20px 16px' : '36px 16px',
+          color: 'var(--text-3)',
+        }}>
+          <ImageIcon size={compact ? 24 : 28} />
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-2)', fontWeight: 400 }}>{label}</p>
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '2px' }}>클릭 또는 드래그</p>
+          </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function GarmentRow({ garment, onTypeChange, onFile, onRemove }) {
+  return (
+    <div style={{
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius)',
+      background: 'var(--surface)',
+      overflow: 'hidden',
+    }}>
+      {/* 타입 선택 탭 */}
+      <div style={{
+        display: 'flex',
+        borderBottom: '1px solid var(--border)',
+        background: '#FAFAF8',
+      }}>
+        {GARMENT_TYPES.map(t => (
+          <button
+            key={t.value}
+            onClick={() => onTypeChange(t.value)}
+            style={{
+              flex: 1,
+              padding: '8px 4px',
+              fontSize: '11px',
+              fontWeight: garment.type === t.value ? 500 : 400,
+              color: garment.type === t.value ? 'var(--text-1)' : 'var(--text-3)',
+              background: garment.type === t.value ? 'var(--surface)' : 'transparent',
+              border: 'none',
+              borderBottom: garment.type === t.value ? '1.5px solid var(--text-1)' : '1.5px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 0.12s',
+              letterSpacing: '0.02em',
+            }}
+          >{t.label}</button>
+        ))}
+        <button
+          onClick={onRemove}
+          style={{
+            padding: '8px 10px',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-3)',
+            display: 'flex', alignItems: 'center',
+            borderLeft: '1px solid var(--border)',
+          }}
+        ><TrashIcon /></button>
+      </div>
+      {/* 드롭존 */}
+      <div style={{ padding: '8px' }}>
+        <DropZone
+          label={`${GARMENT_TYPES.find(t => t.value === garment.type)?.label} 이미지`}
+          onFile={onFile}
+          preview={garment.preview}
+          compact
+        />
+      </div>
     </div>
   )
 }
@@ -52,102 +166,106 @@ export default function UploadPanel({ onSubmit, loading }) {
   const [mannequinPreview, setMannequinPreview] = useState(null)
   const [garments, setGarments] = useState([])
 
-  const handleMannequin = (file) => {
-    setMannequinFile(file)
-    setMannequinPreview(URL.createObjectURL(file))
+  const handleMannequin = (f) => {
+    setMannequinFile(f)
+    setMannequinPreview(URL.createObjectURL(f))
   }
 
-  const addGarment = () => {
-    setGarments((prev) => [...prev, { file: null, preview: null, type: 'top', id: Date.now() }])
-  }
+  const addGarment = () => setGarments(p => [...p, { id: Date.now(), file: null, preview: null, type: 'top' }])
+  const updateGarment = (id, upd) => setGarments(p => p.map(g => g.id === id ? { ...g, ...upd } : g))
+  const removeGarment = (id) => setGarments(p => p.filter(g => g.id !== id))
+  const handleGarmentFile = (id, f) => updateGarment(id, { file: f, preview: URL.createObjectURL(f) })
 
-  const updateGarment = (id, updates) => {
-    setGarments((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)))
-  }
-
-  const removeGarment = (id) => {
-    setGarments((prev) => prev.filter((g) => g.id !== id))
-  }
-
-  const handleGarmentFile = (id, file) => {
-    updateGarment(id, { file, preview: URL.createObjectURL(file) })
-  }
-
-  const canSubmit = mannequinFile && garments.length > 0 && garments.every((g) => g.file)
-
-  const handleSubmit = () => {
-    if (!canSubmit) return
-    onSubmit({ mannequinFile, garments: garments.map(({ file, type }) => ({ file, type })) })
-  }
+  const canSubmit = mannequinFile && garments.length > 0 && garments.every(g => g.file)
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* 마네킹 업로드 */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
+
+      {/* 마네킹 */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">마네킹 이미지</h2>
-        <ImageDropZone
-          label="마네킹 이미지를 업로드하세요"
+        <span style={s.label}>마네킹</span>
+        <DropZone
+          label="마네킹 이미지를 올려주세요"
           onFile={handleMannequin}
           preview={mannequinPreview}
         />
       </div>
 
-      {/* 의류 업로드 */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-gray-700">의류 이미지</h2>
+      {/* 구분선 */}
+      <div style={{ borderTop: '1px solid var(--border)' }} />
+
+      {/* 의류 */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={s.label}>의류</span>
           <button
             onClick={addGarment}
-            className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full hover:bg-indigo-200 transition-colors"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '5px 10px',
+              fontSize: '11px',
+              fontWeight: 500,
+              color: 'var(--text-1)',
+              background: 'transparent',
+              border: '1px solid var(--border-2)',
+              borderRadius: 'var(--radius)',
+              cursor: 'pointer',
+              letterSpacing: '0.04em',
+              transition: 'border-color 0.12s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--text-1)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-2)'}
           >
-            + 추가
+            <PlusIcon /> 추가
           </button>
         </div>
 
-        {garments.length === 0 && (
-          <p className="text-xs text-gray-400 text-center py-4 border border-dashed border-gray-200 rounded-xl">
-            의류 추가 버튼을 눌러 시작하세요
-          </p>
-        )}
-
-        <div className="flex flex-col gap-3">
-          {garments.map((g) => (
-            <div key={g.id} className="border border-gray-200 rounded-xl p-3 bg-white">
-              <div className="flex items-center justify-between mb-2">
-                <select
-                  value={g.type}
-                  onChange={(e) => updateGarment(g.id, { type: e.target.value })}
-                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                >
-                  {GARMENT_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => removeGarment(g.id)}
-                  className="text-xs text-red-400 hover:text-red-600"
-                >
-                  삭제
-                </button>
-              </div>
-              <ImageDropZone
-                label={`${GARMENT_TYPES.find((t) => t.value === g.type)?.label} 이미지`}
-                onFile={(file) => handleGarmentFile(g.id, file)}
-                preview={g.preview}
+        {garments.length === 0 ? (
+          <div style={{
+            border: '1px dashed var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: '24px',
+            textAlign: 'center',
+            color: 'var(--text-3)',
+            fontSize: '12px',
+          }}>
+            의류를 추가하세요
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {garments.map(g => (
+              <GarmentRow
+                key={g.id}
+                garment={g}
+                onTypeChange={type => updateGarment(g.id, { type })}
+                onFile={f => handleGarmentFile(g.id, f)}
+                onRemove={() => removeGarment(g.id)}
               />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* 제출 버튼 */}
+      {/* 실행 버튼 */}
       <button
-        onClick={handleSubmit}
+        onClick={() => canSubmit && !loading && onSubmit({ mannequinFile, garments: garments.map(({ file, type }) => ({ file, type })) })}
         disabled={!canSubmit || loading}
-        className={`w-full py-3 rounded-xl font-semibold text-white transition-all
-          ${canSubmit && !loading
-            ? 'bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg'
-            : 'bg-gray-300 cursor-not-allowed'}`}
+        style={{
+          width: '100%',
+          padding: '13px',
+          fontSize: '12px',
+          fontWeight: 500,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: canSubmit && !loading ? 'var(--accent-fg)' : 'var(--text-3)',
+          background: canSubmit && !loading ? 'var(--accent)' : 'var(--border)',
+          border: 'none',
+          borderRadius: 'var(--radius)',
+          cursor: canSubmit && !loading ? 'pointer' : 'not-allowed',
+          transition: 'background 0.15s, opacity 0.15s',
+        }}
+        onMouseEnter={e => { if (canSubmit && !loading) e.currentTarget.style.background = '#333' }}
+        onMouseLeave={e => { if (canSubmit && !loading) e.currentTarget.style.background = 'var(--accent)' }}
       >
         {loading ? '처리 중...' : '피팅 시작'}
       </button>

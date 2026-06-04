@@ -5,89 +5,148 @@ import LoadingSpinner from './components/LoadingSpinner.jsx'
 import { submitFitting } from './api/fitApi.js'
 
 export default function App() {
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState(null)
-  const [processingMs, setProcessingMs] = useState(0)
-  const [error, setError] = useState(null)
+  const [loading, setLoading]       = useState(false)
+  const [result, setResult]         = useState(null)
+  const [processingMs, setMs]       = useState(0)
+  const [error, setError]           = useState(null)
 
   const handleSubmit = async (formData) => {
-    setLoading(true)
-    setError(null)
-    setResult(null)
+    setLoading(true); setError(null); setResult(null)
     try {
       const data = await submitFitting(formData)
       setResult(data.fitted_image_base64)
-      setProcessingMs(data.processing_time_ms)
+      setMs(data.processing_time_ms)
     } catch (e) {
-      const msg = e.response?.data?.detail || '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
-      setError(msg)
+      setError(e.response?.data?.detail || '처리 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
-      {/* 헤더 */}
-      <header className="bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
-          <span className="text-2xl">👗</span>
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">마네킹 피팅 시스템</h1>
-            <p className="text-xs text-gray-400">AI 기반 가상 의류 합성</p>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)' }}>
+
+      {/* ── 헤더 ── */}
+      <header style={{
+        height: '52px',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--surface)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 32px',
+        flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+          <span style={{
+            fontSize: '14px',
+            fontWeight: 500,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: 'var(--text-1)',
+          }}>Fitting Studio</span>
+          <span style={{
+            fontSize: '10px',
+            letterSpacing: '0.08em',
+            color: 'var(--text-3)',
+            textTransform: 'uppercase',
+          }}>가상 피팅</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{
+            width: '7px', height: '7px',
+            borderRadius: '50%',
+            background: loading ? '#F59E0B' : result ? '#10B981' : '#E3E1DA',
+            display: 'inline-block',
+            transition: 'background 0.3s',
+          }} />
+          <span style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.04em' }}>
+            {loading ? '처리 중' : result ? '완료' : '대기'}
+          </span>
         </div>
       </header>
 
-      {/* 메인 */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* ── 바디: 사이드바 + 메인 ── */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+        {/* 사이드바 (업로드) */}
+        <aside style={{
+          width: '320px',
+          flexShrink: 0,
+          borderRight: '1px solid var(--border)',
+          background: 'var(--surface)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto',
+        }}>
+          {/* 사이드바 헤더 */}
+          <div style={{
+            padding: '20px 24px 16px',
+            borderBottom: '1px solid var(--border)',
+          }}>
+            <p style={{
+              fontSize: '10px',
+              fontWeight: 500,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'var(--text-2)',
+            }}>이미지 설정</p>
+          </div>
+
           {/* 업로드 패널 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-base font-semibold text-gray-700 mb-5 flex items-center gap-2">
-              <span className="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-              이미지 업로드
-            </h2>
+          <div style={{ padding: '20px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
             <UploadPanel onSubmit={handleSubmit} loading={loading} />
           </div>
+        </aside>
 
-          {/* 결과 패널 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-base font-semibold text-gray-700 mb-5 flex items-center gap-2">
-              <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-              피팅 결과
-            </h2>
-            {loading ? (
-              <LoadingSpinner />
-            ) : (
-              <ResultPanel imageBase64={result} processingMs={processingMs} error={error} />
+        {/* 메인 뷰어 */}
+        <main style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          background: 'var(--bg)',
+        }}>
+          {/* 뷰어 상단 툴바 */}
+          <div style={{
+            height: '44px',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--surface)',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 28px',
+            gap: '20px',
+            flexShrink: 0,
+          }}>
+            <span style={{
+              fontSize: '10px',
+              fontWeight: 500,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'var(--text-2)',
+            }}>결과 미리보기</span>
+
+            {result && !loading && (
+              <span style={{
+                fontSize: '10px',
+                color: 'var(--text-3)',
+                letterSpacing: '0.06em',
+              }}>
+                PNG · {(processingMs / 1000).toFixed(2)}s
+              </span>
             )}
           </div>
-        </div>
 
-        {/* 파이프라인 안내 */}
-        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-sm font-semibold text-gray-600 mb-4">처리 파이프라인</h2>
-          <div className="flex flex-wrap gap-2 items-center">
-            {[
-              { icon: '🖼', label: '이미지 전처리' },
-              { icon: '✂️', label: '배경 제거' },
-              { icon: '🦴', label: '포즈 추정' },
-              { icon: '🗂', label: '신체 분할' },
-              { icon: '🔄', label: 'TPS 와핑' },
-              { icon: '🎨', label: '알파 합성' },
-            ].map((step, i) => (
-              <div key={i} className="flex items-center gap-1">
-                <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5">
-                  <span>{step.icon}</span>
-                  <span className="text-xs text-gray-600">{step.label}</span>
-                </div>
-                {i < 5 && <span className="text-gray-300 text-xs">→</span>}
-              </div>
-            ))}
+          {/* 결과 영역 */}
+          <div style={{ flex: 1, padding: '32px', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {loading
+              ? <LoadingSpinner />
+              : <ResultPanel imageBase64={result} processingMs={processingMs} error={error} />
+            }
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

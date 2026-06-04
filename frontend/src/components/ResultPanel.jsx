@@ -1,49 +1,92 @@
+import { DownloadIcon, AlertIcon, ImageIcon } from './Icons.jsx'
+
 export default function ResultPanel({ imageBase64, processingMs, error }) {
   const handleDownload = () => {
     const a = document.createElement('a')
     a.href = imageBase64
-    a.download = `fitting_result_${Date.now()}.png`
+    a.download = `fitting_${Date.now()}.png`
     a.click()
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-64 gap-3">
-        <div className="text-4xl">⚠️</div>
-        <p className="text-red-500 text-sm font-medium text-center px-4">{error}</p>
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        height: '100%', minHeight: '320px',
+        gap: '12px', color: 'var(--danger)',
+      }}>
+        <AlertIcon size={22} />
+        <p style={{ fontSize: '12px', textAlign: 'center', maxWidth: '260px', color: 'var(--text-2)', lineHeight: 1.6 }}>
+          {error}
+        </p>
       </div>
     )
   }
 
   if (!imageBase64) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-64 gap-4 text-gray-300">
-        <div className="text-6xl">👗</div>
-        <p className="text-sm">피팅 결과가 여기에 표시됩니다</p>
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        height: '100%', minHeight: '320px',
+        gap: '16px',
+        border: '1px dashed var(--border)',
+        borderRadius: 'var(--radius)',
+        color: 'var(--text-3)',
+      }}>
+        <ImageIcon size={36} />
+        <p style={{ fontSize: '12px', letterSpacing: '0.04em' }}>결과가 여기에 표시됩니다</p>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0', height: '100%' }}>
+      {/* 결과 이미지 */}
+      <div style={{
+        flex: 1,
+        background: '#F7F6F3',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
         <img
           src={imageBase64}
           alt="피팅 결과"
-          className="w-full object-contain max-h-[500px]"
+          style={{ maxWidth: '100%', maxHeight: '520px', objectFit: 'contain', display: 'block' }}
         />
       </div>
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-400">
-          처리 시간: <span className="font-medium text-gray-600">{(processingMs / 1000).toFixed(2)}초</span>
+      {/* 하단 액션바 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        paddingTop: '14px',
+      }}>
+        <span style={{ fontSize: '11px', color: 'var(--text-3)', letterSpacing: '0.04em' }}>
+          {(processingMs / 1000).toFixed(2)}s
         </span>
         <button
           onClick={handleDownload}
-          className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium
-            hover:bg-emerald-700 transition-colors shadow-sm"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '7px',
+            padding: '8px 16px',
+            fontSize: '11px', fontWeight: 500,
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+            color: 'var(--accent-fg)',
+            background: 'var(--accent)',
+            border: 'none',
+            borderRadius: 'var(--radius)',
+            cursor: 'pointer',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#333'}
+          onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
         >
-          <span>⬇</span> 다운로드
+          <DownloadIcon size={13} /> 저장
         </button>
       </div>
     </div>

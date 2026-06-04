@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Segoe UI', 'Noto Sans KR', sans-serif;
+:root {
+  --bg:        #F7F6F3;
+  --surface:   #FFFFFF;
+  --border:    #E3E1DA;
+  --border-2:  #C8C5BC;
+  --text-1:    #111110;
+  --text-2:    #6B6860;
+  --text-3:    #9B9890;
+  --accent:    #111110;
+  --accent-fg: #FFFFFF;
+  --danger:    #B91C1C;
+  --radius:    4px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: 'DM Sans', 'Noto Sans KR', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
