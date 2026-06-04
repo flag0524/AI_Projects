@@ -37,6 +37,42 @@ def is_available() -> bool:
     return bool(REPLICATE_TOKEN)
 
 
+def _resolve_verify():
+    """
+    TLS 검증 인증서 결정 (우선순위):
+      1. REPLICATE_CA_BUNDLE : 기업 루트 CA 인증서 경로 (.pem/.crt)
+         — 기업 프록시 SSL 가로채기 환경에서 사내 CA를 신뢰하도록 지정
+      2. certifi 기본 번들
+
+    항상 인증서 검증을 수행한다 (보안 유지).
+    """
+    ca_bundle = os.environ.get("REPLICATE_CA_BUNDLE", "").strip()
+    if ca_bundle and os.path.exists(ca_bundle):
+        return ca_bundle
+
+    try:
+        import certifi
+        return certifi.where()
+    except Exception:
+        return True
+
+
+def _make_client(replicate_mod):
+    """
+    SSL 환경에 맞게 TLS 검증을 설정한 Replicate 클라이언트 생성.
+    기업 프록시 SSL 가로채기 환경을 환경변수로 제어 가능.
+    """
+    try:
+        import httpx
+        verify = _resolve_verify()
+        return replicate_mod.Client(
+            api_token=REPLICATE_TOKEN,
+            transport=httpx.HTTPTransport(verify=verify),
+        )
+    except Exception:
+        return replicate_mod.Client(api_token=REPLICATE_TOKEN)
+
+
 def _pil_to_data_uri(img: Image.Image, fmt: str = "PNG") -> str:
     buf = io.BytesIO()
     img.convert("RGB").save(buf, format=fmt)
@@ -76,7 +112,7 @@ def generate_tryon(
         raise GenerativeUnavailable("replicate 패키지가 설치되지 않았습니다. (pip install replicate)")
 
     try:
-        client = replicate.Client(api_token=REPLICATE_TOKEN)
+        client = _make_client(replicate)
         output = client.run(
             IDM_VTON_VERSION,
             input={
