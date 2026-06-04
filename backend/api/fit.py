@@ -40,16 +40,43 @@ async def fit(
         # 포즈 추정
         kpts = estimate_pose(mannequin_nobg)
         if kpts is None:
-            # 포즈 감지 실패 시 이미지 전체를 신체 영역으로 간주
+            # 마네킹 특성에 맞춘 기본 신체 비율 (어깨 좁고 몸통 길게)
             size = 512
-            kpts = {
-                "left_shoulder": (int(size * 0.3), int(size * 0.15)),
-                "right_shoulder": (int(size * 0.7), int(size * 0.15)),
-                "left_hip": (int(size * 0.35), int(size * 0.55)),
-                "right_hip": (int(size * 0.65), int(size * 0.55)),
-                "left_ankle": (int(size * 0.35), int(size * 0.95)),
-                "right_ankle": (int(size * 0.65), int(size * 0.95)),
-            }
+            # 마네킹 몸체 감지: 알파 마스크의 바운딩 박스 기반
+            import numpy as np
+            arr = np.array(mannequin_nobg)
+            alpha = arr[:, :, 3] if arr.shape[2] == 4 else np.ones((size, size), dtype=np.uint8) * 255
+            rows = np.where(alpha.max(axis=1) > 30)[0]
+            cols = np.where(alpha.max(axis=0) > 30)[0]
+            if len(rows) > 0 and len(cols) > 0:
+                body_top = int(rows[0])
+                body_bottom = int(rows[-1])
+                body_left = int(cols[0])
+                body_right = int(cols[-1])
+                body_w = body_right - body_left
+                body_h = body_bottom - body_top
+                # 마네킹 비율: 어깨=상단20%, 허리=상단55%, 발목=하단5%
+                shoulder_y = body_top + int(body_h * 0.18)
+                hip_y = body_top + int(body_h * 0.55)
+                ankle_y = body_top + int(body_h * 0.95)
+                shoulder_inset = int(body_w * 0.1)
+                kpts = {
+                    "left_shoulder":  (body_left + shoulder_inset, shoulder_y),
+                    "right_shoulder": (body_right - shoulder_inset, shoulder_y),
+                    "left_hip":       (body_left + int(body_w * 0.2), hip_y),
+                    "right_hip":      (body_right - int(body_w * 0.2), hip_y),
+                    "left_ankle":     (body_left + int(body_w * 0.25), ankle_y),
+                    "right_ankle":    (body_right - int(body_w * 0.25), ankle_y),
+                }
+            else:
+                kpts = {
+                    "left_shoulder":  (int(size * 0.28), int(size * 0.16)),
+                    "right_shoulder": (int(size * 0.72), int(size * 0.16)),
+                    "left_hip":       (int(size * 0.33), int(size * 0.54)),
+                    "right_hip":      (int(size * 0.67), int(size * 0.54)),
+                    "left_ankle":     (int(size * 0.33), int(size * 0.94)),
+                    "right_ankle":    (int(size * 0.67), int(size * 0.94)),
+                }
         body_bounds = estimate_body_bounds(kpts)
 
         # 의류 처리 및 와핑
