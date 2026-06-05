@@ -32,7 +32,7 @@ from backend.pipeline.composer import compose
 
 # 기본 모델 템플릿 경로 (저장소 번들)
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "templates")
-_DEFAULT_TEMPLATE = os.path.join(_TEMPLATE_DIR, "model_fullbody.jpg")
+_DEFAULT_TEMPLATE = os.path.join(_TEMPLATE_DIR, "model_neutral.jpg")
 
 
 # ── 1. 전처리: 의류 깔끔 분리 ──────────────────────────────────
