@@ -10,3 +10,4 @@ mediapipe>=0.10.14
 onnxruntime>=1.19.2
 replicate>=0.34.0
 truststore>=0.9.0
+gradio_client>=1.0

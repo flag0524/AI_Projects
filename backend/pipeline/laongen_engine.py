@@ -17,6 +17,7 @@ LaonGEN 하이브리드 엔진.
   │    - 기존 절차적 합성 파이프라인으로 전환               │
   └─────────────────────────────────────────────────────────┘
 """
+import os
 import numpy as np
 import cv2
 from PIL import Image
@@ -24,9 +25,14 @@ from PIL import Image
 from backend.pipeline.bg_remover import remove_background
 from backend.pipeline.preprocessor import preprocess
 from backend.pipeline import generative_provider as gen
+from backend.pipeline import hf_provider as hf
 from backend.pipeline.body_analyzer import get_mask_from_image, detect_body_regions
 from backend.pipeline.garment_warper import warp_garment, fallback_affine_warp
 from backend.pipeline.composer import compose
+
+# 기본 모델 템플릿 경로 (저장소 번들)
+_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "templates")
+_DEFAULT_TEMPLATE = os.path.join(_TEMPLATE_DIR, "model_female_front.jpg")
 
 
 # ── 1. 전처리: 의류 깔끔 분리 ──────────────────────────────────
@@ -59,11 +65,12 @@ def isolate_garment(product_img: Image.Image, size: int = 768) -> Image.Image:
 # ── 2. 모델 템플릿 ─────────────────────────────────────────────
 def make_default_model_template(size: int = 768) -> Image.Image:
     """
-    표준 모델 템플릿이 없을 때 사용하는 중립 실루엣.
-    실제 운영 시에는 라이선스 확보된 모델 사진을 사용 권장.
+    기본 모델 템플릿 반환.
+    저장소 번들 모델 사진이 있으면 사용, 없으면 중립 배경.
     """
-    img = Image.new("RGB", (size, size), (235, 232, 228))
-    return img
+    if os.path.exists(_DEFAULT_TEMPLATE):
+        return Image.open(_DEFAULT_TEMPLATE).convert("RGB")
+    return Image.new("RGB", (size, size), (235, 232, 228))
 
 
 # ── 3. 하이브리드 생성 ─────────────────────────────────────────
@@ -81,17 +88,37 @@ def generate_model_shot(
         mannequin_img  : 폴백용 마네킹 이미지
 
     Returns:
-        (결과 이미지, 사용된 방식 "generative" | "procedural")
-    """
-    # ── 생성형 경로 ────────────────────────────────────────────
-    if gen.is_available():
-        try:
-            template = model_template or make_default_model_template()
-            current  = template
+        (결과 이미지, 사용된 방식 "hf" | "generative" | "procedural")
 
-            # 상의 → 하의 → 원피스 순으로 순차 try-on
-            order = {"top": 0, "dress": 1, "bottom": 2, "accessory": 3}
-            for garment_img, gtype in sorted(garments, key=lambda x: order.get(x[1], 9)):
+    백엔드 우선순위:
+      1. HuggingFace Spaces (무료, 기본)
+      2. Replicate IDM-VTON (유료, REPLICATE_API_TOKEN 설정 시)
+      3. 절차적 합성 (폴백)
+    """
+    order    = {"top": 0, "dress": 1, "bottom": 2, "accessory": 3}
+    ordered  = sorted(garments, key=lambda x: order.get(x[1], 9))
+    backend  = os.environ.get("GEN_BACKEND", "hf").strip().lower()
+
+    # ── 1. HuggingFace Spaces (무료, 기본) ─────────────────────
+    if backend in ("hf", "auto") and hf.is_available():
+        try:
+            current = (model_template or make_default_model_template()).convert("RGB")
+            for garment_img, gtype in ordered:
+                isolated = isolate_garment(garment_img).convert("RGB")
+                current  = hf.generate_tryon(
+                    human_img   = current,
+                    garment_img = isolated,
+                    garment_des = _desc(gtype),
+                )
+            return current, "hf"
+        except hf.HFUnavailable:
+            pass  # Replicate 또는 절차적 폴백으로 진행
+
+    # ── 2. Replicate IDM-VTON (유료) ───────────────────────────
+    if backend in ("replicate", "auto") and gen.is_available():
+        try:
+            current = model_template or make_default_model_template()
+            for garment_img, gtype in ordered:
                 isolated = isolate_garment(garment_img)
                 current  = gen.generate_tryon(
                     garment_img    = isolated,
@@ -100,13 +127,12 @@ def generate_model_shot(
                     category       = gen.to_category(gtype),
                 )
             return current, "generative"
-
         except gen.GenerativeBillingError:
-            raise  # 결제 오류는 사용자에게 명확히 전달 (폴백 안 함)
+            raise
         except gen.GenerativeUnavailable:
-            pass  # 그 외 오류는 절차적 폴백으로 진행
+            pass
 
-    # ── 절차적 폴백 ────────────────────────────────────────────
+    # ── 3. 절차적 폴백 ─────────────────────────────────────────
     return _procedural_fallback(garments, mannequin_img), "procedural"
 
 

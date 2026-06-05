@@ -33,9 +33,25 @@ ALLOWED = {"top", "bottom", "dress", "accessory"}
 @router.get("/generate/status")
 def status():
     """생성형 백엔드 가용 여부 확인."""
+    from backend.pipeline import hf_provider as hf
+    import os
+
+    hf_ok    = hf.is_available()
+    rep_ok   = gen.is_available()
+    backend  = os.environ.get("GEN_BACKEND", "hf").strip().lower()
+
+    if backend in ("hf", "auto") and hf_ok:
+        active = f"huggingface/{hf.HF_SPACE}"
+    elif rep_ok:
+        active = "replicate/idm-vton"
+    else:
+        active = "procedural-fallback"
+
     return {
-        "generative_available": gen.is_available(),
-        "backend": "replicate/idm-vton" if gen.is_available() else "procedural-fallback",
+        "generative_available": hf_ok or rep_ok,
+        "active_backend":        active,
+        "hf_available":          hf_ok,
+        "replicate_available":   rep_ok,
     }
 
 
