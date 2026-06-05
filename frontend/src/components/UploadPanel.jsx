@@ -161,14 +161,22 @@ function GarmentRow({ garment, onTypeChange, onFile, onRemove }) {
   )
 }
 
-export default function UploadPanel({ onSubmit, loading }) {
+export default function UploadPanel({ onSubmit, loading, mode = 'generate' }) {
+  const isGenerate = mode === 'generate'
+
   const [mannequinFile, setMannequinFile] = useState(null)
   const [mannequinPreview, setMannequinPreview] = useState(null)
+  const [templateFile, setTemplateFile] = useState(null)
+  const [templatePreview, setTemplatePreview] = useState(null)
   const [garments, setGarments] = useState([])
 
   const handleMannequin = (f) => {
     setMannequinFile(f)
     setMannequinPreview(URL.createObjectURL(f))
+  }
+  const handleTemplate = (f) => {
+    setTemplateFile(f)
+    setTemplatePreview(URL.createObjectURL(f))
   }
 
   const addGarment = () => setGarments(p => [...p, { id: Date.now(), file: null, preview: null, type: 'top' }])
@@ -176,20 +184,44 @@ export default function UploadPanel({ onSubmit, loading }) {
   const removeGarment = (id) => setGarments(p => p.filter(g => g.id !== id))
   const handleGarmentFile = (id, f) => updateGarment(id, { file: f, preview: URL.createObjectURL(f) })
 
-  const canSubmit = mannequinFile && garments.length > 0 && garments.every(g => g.file)
+  // 생성 모드: 마네킹 불필요(모델 템플릿 선택). 피팅 모드: 마네킹 필수.
+  const garmentsReady = garments.length > 0 && garments.every(g => g.file)
+  const canSubmit = isGenerate ? garmentsReady : (mannequinFile && garmentsReady)
+
+  const handleClick = () => {
+    if (!canSubmit || loading) return
+    const garmentList = garments.map(({ file, type }) => ({ file, type }))
+    if (isGenerate) {
+      onSubmit({ garments: garmentList, modelTemplateFile: templateFile, mannequinFile })
+    } else {
+      onSubmit({ mannequinFile, garments: garmentList })
+    }
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
 
-      {/* 마네킹 */}
-      <div>
-        <span style={s.label}>마네킹</span>
-        <DropZone
-          label="마네킹 이미지를 올려주세요"
-          onFile={handleMannequin}
-          preview={mannequinPreview}
-        />
-      </div>
+      {/* 피팅 모드: 마네킹(필수) / 생성 모드: 모델 템플릿(선택) */}
+      {isGenerate ? (
+        <div>
+          <span style={s.label}>모델 템플릿 <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(선택)</span></span>
+          <DropZone
+            label="모델 사진 (미선택 시 기본 모델)"
+            onFile={handleTemplate}
+            preview={templatePreview}
+            compact
+          />
+        </div>
+      ) : (
+        <div>
+          <span style={s.label}>마네킹</span>
+          <DropZone
+            label="마네킹 이미지를 올려주세요"
+            onFile={handleMannequin}
+            preview={mannequinPreview}
+          />
+        </div>
+      )}
 
       {/* 구분선 */}
       <div style={{ borderTop: '1px solid var(--border)' }} />
@@ -248,7 +280,7 @@ export default function UploadPanel({ onSubmit, loading }) {
 
       {/* 실행 버튼 */}
       <button
-        onClick={() => canSubmit && !loading && onSubmit({ mannequinFile, garments: garments.map(({ file, type }) => ({ file, type })) })}
+        onClick={handleClick}
         disabled={!canSubmit || loading}
         style={{
           width: '100%',
@@ -267,7 +299,7 @@ export default function UploadPanel({ onSubmit, loading }) {
         onMouseEnter={e => { if (canSubmit && !loading) e.currentTarget.style.background = '#333' }}
         onMouseLeave={e => { if (canSubmit && !loading) e.currentTarget.style.background = 'var(--accent)' }}
       >
-        {loading ? '처리 중...' : '피팅 시작'}
+        {loading ? '처리 중...' : isGenerate ? '모델 컷 생성' : '피팅 시작'}
       </button>
     </div>
   )
