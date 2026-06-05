@@ -1,7 +1,27 @@
+import os
+
+# ── .env 로드 (라우터 import 전에 실행) ────────────────────────
+def _load_dotenv():
+    """프로젝트 루트의 .env를 읽어 환경변수로 주입 (외부 의존성 없음)."""
+    root = os.path.dirname(os.path.dirname(__file__))
+    path = os.path.join(root, ".env")
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key, val = key.strip(), val.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = val
+
+_load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import os
 
 from backend.api.fit import router as fit_router
 from backend.api.generate import router as generate_router

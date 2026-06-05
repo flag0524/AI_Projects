@@ -18,9 +18,23 @@ import base64
 import time
 from PIL import Image
 
+# Windows 시스템 인증서 저장소를 사용해 SSL 가로채기/사내 CA 환경에서도
+# TLS 검증을 통과시킨다. (certifi 번들로 실패하는 환경 대응)
+try:
+    import truststore
+    truststore.inject_into_ssl()
+    _TRUSTSTORE = True
+except Exception:
+    _TRUSTSTORE = False
+
 
 class GenerativeUnavailable(Exception):
     """생성형 백엔드를 사용할 수 없을 때 (키 없음, 네트워크 오류 등)."""
+    pass
+
+
+class GenerativeBillingError(GenerativeUnavailable):
+    """Replicate 계정 크레딧 부족 등 결제 관련 오류."""
     pass
 
 
@@ -135,6 +149,12 @@ def generate_tryon(
         return Image.open(io.BytesIO(data)).convert("RGB")
 
     except Exception as e:
+        msg = str(e)
+        if "402" in msg or "insufficient credit" in msg.lower() or "billing" in msg.lower():
+            raise GenerativeBillingError(
+                "Replicate 크레딧이 부족합니다. "
+                "https://replicate.com/account/billing 에서 충전 후 다시 시도하세요."
+            )
         raise GenerativeUnavailable(f"생성형 API 호출 실패: {e}")
 
 

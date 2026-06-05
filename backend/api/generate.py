@@ -85,6 +85,9 @@ async def generate(
             "processing_time_ms":   ms,
         })
 
+    except gen.GenerativeBillingError as e:
+        # 402: 크레딧 부족 — 결제 안내
+        raise HTTPException(402, str(e))
     except HTTPException:
         raise
     except Exception as e:

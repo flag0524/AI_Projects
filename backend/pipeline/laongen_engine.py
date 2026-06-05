@@ -101,8 +101,10 @@ def generate_model_shot(
                 )
             return current, "generative"
 
+        except gen.GenerativeBillingError:
+            raise  # 결제 오류는 사용자에게 명확히 전달 (폴백 안 함)
         except gen.GenerativeUnavailable:
-            pass  # 폴백으로 진행
+            pass  # 그 외 오류는 절차적 폴백으로 진행
 
     # ── 절차적 폴백 ────────────────────────────────────────────
     return _procedural_fallback(garments, mannequin_img), "procedural"
