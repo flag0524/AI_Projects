@@ -32,7 +32,7 @@ from backend.pipeline.composer import compose
 
 # 기본 모델 템플릿 경로 (저장소 번들)
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "assets", "templates")
-_DEFAULT_TEMPLATE = os.path.join(_TEMPLATE_DIR, "model_female_front.jpg")
+_DEFAULT_TEMPLATE = os.path.join(_TEMPLATE_DIR, "model_fullbody.jpg")
 
 
 # ── 1. 전처리: 의류 깔끔 분리 ──────────────────────────────────
@@ -104,11 +104,13 @@ def generate_model_shot(
         try:
             current = (model_template or make_default_model_template()).convert("RGB")
             for garment_img, gtype in ordered:
-                isolated = isolate_garment(garment_img).convert("RGB")
-                current  = hf.generate_tryon(
-                    human_img   = current,
-                    garment_img = isolated,
-                    garment_des = _desc(gtype),
+                # Leffa/IDM-VTON은 흰 배경 제품 사진을 직접 처리 (분리 불필요)
+                garm = garment_img.convert("RGB")
+                current = hf.generate_tryon(
+                    human_img    = current,
+                    garment_img  = garm,
+                    garment_type = gtype,
+                    garment_des  = _desc(gtype),
                 )
             return current, "hf"
         except hf.HFUnavailable:
