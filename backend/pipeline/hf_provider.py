@@ -129,8 +129,9 @@ def generate_tryon(
         else:
             # Leffa: 상의/하의/원피스 지원
             category = _LEFFA_CATEGORY.get(garment_type, "upper_body")
-            # 하의는 dress_code, 그 외 viton_hd 모델이 자연스러움
-            model_type = "dress_code" if category == "lower_body" else "viton_hd"
+            # viton_hd 모델이 일반 모델 사진에 가장 안정적으로 적용됨
+            # (dress_code는 DressCode 도메인 전용이라 일반 템플릿엔 미적용 빈번)
+            model_type = "viton_hd"
             result = client.predict(
                 handle_file(human_path),   # src_image_path
                 handle_file(garm_path),    # ref_image_path

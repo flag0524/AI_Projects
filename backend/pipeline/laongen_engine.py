@@ -95,6 +95,8 @@ def generate_model_shot(
       2. Replicate IDM-VTON (유료, REPLICATE_API_TOKEN 설정 시)
       3. 절차적 합성 (폴백)
     """
+    # 상의를 먼저, 하의를 마지막에 적용.
+    # (상의가 길게 내려와도 하의 try-on이 마지막에 허리 아래를 덮어 보정)
     order    = {"top": 0, "dress": 1, "bottom": 2, "accessory": 3}
     ordered  = sorted(garments, key=lambda x: order.get(x[1], 9))
     backend  = os.environ.get("GEN_BACKEND", "hf").strip().lower()
