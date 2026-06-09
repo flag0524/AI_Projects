@@ -31,7 +31,7 @@ def _avail(monkeypatch, hgf_ok, hf_ok, rep_ok):
 
 def test_higgsfield_success(monkeypatch, garments):
     _avail(monkeypatch, True, True, True)
-    monkeypatch.setattr(hgf, "generate_tryon", lambda **k: Image.new("RGB", (8, 8)))
+    monkeypatch.setattr(hgf, "generate_tryon_multi", lambda *a, **k: Image.new("RGB", (8, 8)))
     _, method = eng.generate_model_shot(garments)
     assert method == "higgsfield"
 
@@ -40,9 +40,9 @@ def test_higgsfield_fail_falls_to_hf(monkeypatch, garments):
     """[CRITICAL 회귀] higgsfield 실패 → HF 폴백. 기존 동작 보존 증명."""
     _avail(monkeypatch, True, True, True)
 
-    def _boom(**k):
+    def _boom(*a, **k):
         raise hgf.HiggsfieldUnavailable("down")
-    monkeypatch.setattr(hgf, "generate_tryon", _boom)
+    monkeypatch.setattr(hgf, "generate_tryon_multi", _boom)
     monkeypatch.setattr(hf, "generate_tryon", lambda **k: Image.new("RGB", (8, 8)))
 
     _, method = eng.generate_model_shot(garments)
@@ -51,7 +51,7 @@ def test_higgsfield_fail_falls_to_hf(monkeypatch, garments):
 
 def test_hf_fail_falls_to_replicate(monkeypatch, garments):
     _avail(monkeypatch, True, True, True)
-    monkeypatch.setattr(hgf, "generate_tryon", lambda **k: (_ for _ in ()).throw(hgf.HiggsfieldUnavailable()))
+    monkeypatch.setattr(hgf, "generate_tryon_multi", lambda *a, **k: (_ for _ in ()).throw(hgf.HiggsfieldUnavailable()))
     monkeypatch.setattr(hf, "generate_tryon", lambda **k: (_ for _ in ()).throw(hf.HFUnavailable()))
     monkeypatch.setattr(gen, "generate_tryon", lambda **k: Image.new("RGB", (8, 8)))
     _, method = eng.generate_model_shot(garments)
@@ -70,29 +70,33 @@ def test_billing_error_not_swallowed(monkeypatch, garments):
     """크레딧 부족은 폴백하지 않고 전파 (api가 402 처리)."""
     _avail(monkeypatch, True, True, True)
 
-    def _bill(**k):
+    def _bill(*a, **k):
         raise gen.GenerativeBillingError("no credit")
-    monkeypatch.setattr(hgf, "generate_tryon", _bill)
+    monkeypatch.setattr(hgf, "generate_tryon_multi", _bill)
     with pytest.raises(gen.GenerativeBillingError):
         eng.generate_model_shot(garments)
 
 
-def test_higgsfield_single_garment_only(monkeypatch, img):
-    """순차 체이닝 NOT in scope — higgsfield는 첫 의류만 사용 (호출 1회)."""
+def test_higgsfield_multi_single_call(monkeypatch, img):
+    """다중 의류 단일-호출: 2벌이어도 generate_tryon_multi 1회, 2벌 모두 전달."""
     _avail(monkeypatch, True, False, False)
     calls = []
-    monkeypatch.setattr(hgf, "generate_tryon",
-                        lambda **k: calls.append(k) or Image.new("RGB", (8, 8)))
+
+    def _cap(garments, model):
+        calls.append(garments)
+        return Image.new("RGB", (8, 8))
+    monkeypatch.setattr(hgf, "generate_tryon_multi", _cap)
     eng.generate_model_shot([(img, "top"), (img, "bottom")])
-    assert len(calls) == 1  # 2벌이어도 1회만
+    assert len(calls) == 1            # 단일 호출
+    assert len(calls[0]) == 2         # 2벌 모두 한 호출에 전달
 
 
 def test_backend_hf_does_not_use_higgsfield(monkeypatch, garments):
     """GEN_BACKEND=hf → higgsfield 건너뜀 (기존 동작 보존)."""
     monkeypatch.setenv("GEN_BACKEND", "hf")
     _avail(monkeypatch, True, True, True)
-    monkeypatch.setattr(hgf, "generate_tryon",
-                        lambda **k: pytest.fail("hf 모드에서 higgsfield 호출되면 안 됨"))
+    monkeypatch.setattr(hgf, "generate_tryon_multi",
+                        lambda *a, **k: pytest.fail("hf 모드에서 higgsfield 호출되면 안 됨"))
     monkeypatch.setattr(hf, "generate_tryon", lambda **k: Image.new("RGB", (8, 8)))
     _, method = eng.generate_model_shot(garments)
     assert method == "hf"

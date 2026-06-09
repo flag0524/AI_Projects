@@ -56,6 +56,24 @@ def test_generate_tryon_happy(monkeypatch, with_key, fake_client, img):
     assert out.mode == "RGB"
 
 
+# ── generate_tryon_multi (다중 의류 단일-호출) ────────────────────
+def test_generate_tryon_multi_happy(monkeypatch, with_key, fake_client, img):
+    monkeypatch.setattr(hgf, "_submit_job", lambda *a, **k: "job-1")
+    monkeypatch.setattr(hgf, "_poll_job", lambda *a, **k: "ref://r")
+    monkeypatch.setattr(hgf, "_download", lambda *a, **k: Image.new("RGB", (8, 8)))
+
+    out = hgf.generate_tryon_multi(
+        [(img, "top", "upper_body"), (img, "shorts", "lower_body")], img
+    )
+    assert isinstance(out, Image.Image)
+    assert out.mode == "RGB"
+
+
+def test_generate_tryon_multi_empty_raises(with_key, img):
+    with pytest.raises(hgf.HiggsfieldUnavailable):
+        hgf.generate_tryon_multi([], img)
+
+
 # ── 키 없음 → Unavailable ─────────────────────────────────────
 def test_generate_tryon_no_key(monkeypatch, img):
     monkeypatch.setattr(hgf, "API_KEY", "")
@@ -137,13 +155,32 @@ class FakeClient:
 
 def test_submit_job_parses_id(img):
     c = FakeClient(post_resp=FakeResp({"id": "job-xyz"}))
-    assert hgf._submit_job(c, img, img, "a top", "upper_body") == "job-xyz"
+    assert hgf._submit_job(c, [(img, "a top", "upper_body")], img) == "job-xyz"
 
 
 def test_submit_job_missing_id_raises(img):
     c = FakeClient(post_resp=FakeResp({"foo": "bar"}))
     with pytest.raises(hgf.HiggsfieldUnavailable):
-        hgf._submit_job(c, img, img, "a top", "upper_body")
+        hgf._submit_job(c, [(img, "a top", "upper_body")], img)
+
+
+def test_submit_job_multi_input_images(img):
+    """다중 의류: input_images=[model, *garments], 프롬프트에 각 의류 반영."""
+    captured = {}
+
+    class CapClient:
+        def post(self, path, json):
+            captured["json"] = json
+            return FakeResp({"id": "j"})
+
+    hgf._submit_job(
+        CapClient(),
+        [(img, "top", "upper_body"), (img, "shorts", "lower_body")],
+        img,
+    )
+    assert len(captured["json"]["input_images"]) == 3   # model + 2 garments
+    assert "the exact top on the upper_body" in captured["json"]["prompt"]
+    assert "the exact shorts on the lower_body" in captured["json"]["prompt"]
 
 
 def test_poll_completed_returns_url(monkeypatch):

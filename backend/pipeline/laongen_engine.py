@@ -124,15 +124,13 @@ def generate_model_shot(
 
 # ── 백엔드 러너 ────────────────────────────────────────────────
 def _run_higgsfield(ordered, model_template):
-    """Higgsfield: 단일 의류만 (순차 체이닝 NOT in scope — drift 확인됨)."""
-    current = (model_template or make_default_model_template()).convert("RGB")
-    garment_img, gtype = ordered[0]
-    return hgf.generate_tryon(
-        garment_img    = garment_img.convert("RGB"),
-        model_template = current,
-        garment_desc   = _desc(gtype),
-        category       = hgf.to_category(gtype),
-    )
+    """Higgsfield: 다중 의류 단일-호출 풀코디 (2026-06-09 검증: 순차 drift 우회)."""
+    model    = (model_template or make_default_model_template()).convert("RGB")
+    garments = [
+        (garment_img.convert("RGB"), _desc(gtype), hgf.to_category(gtype))
+        for garment_img, gtype in ordered
+    ]
+    return hgf.generate_tryon_multi(garments, model)
 
 
 def _run_hf(ordered, model_template):
