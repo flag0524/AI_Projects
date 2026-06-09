@@ -1,4 +1,5 @@
-"""higgsfield_provider 단위 테스트 — REST 격리 계층 모킹."""
+"""higgsfield_provider 단위 테스트 — MCP JSON-RPC 격리 계층 모킹."""
+import json
 import contextlib
 
 import pytest
@@ -20,6 +21,28 @@ def fake_client(monkeypatch):
     def _dummy():
         yield object()
     monkeypatch.setattr(hgf, "_client", _dummy)
+
+
+def _sse(payload: dict) -> str:
+    return f"event: message\ndata: {json.dumps(payload)}\n\n"
+
+
+class FakeResp:
+    def __init__(self, text="", status=200):
+        self.text = text
+        self.status_code = status
+
+    def raise_for_status(self):
+        pass
+
+
+class FakeClient:
+    """post 응답을 큐로 제공하는 더미 streamable-HTTP 클라이언트."""
+    def __init__(self, responses):
+        self._resp = list(responses)
+
+    def post(self, *a, **k):
+        return self._resp.pop(0)
 
 
 # ── is_available ──────────────────────────────────────────────
@@ -45,23 +68,97 @@ def test_to_category(gtype, expected):
     assert hgf.to_category(gtype) == expected
 
 
-# ── generate_tryon happy path ─────────────────────────────────
-def test_generate_tryon_happy(monkeypatch, with_key, fake_client, img):
-    monkeypatch.setattr(hgf, "_submit_job", lambda *a, **k: "job-123")
-    monkeypatch.setattr(hgf, "_poll_job", lambda *a, **k: "ref://result")
-    monkeypatch.setattr(hgf, "_download", lambda *a, **k: Image.new("RGB", (32, 32), (1, 2, 3)))
-
-    out = hgf.generate_tryon(img, img, "a top", "upper_body")
-    assert isinstance(out, Image.Image)
-    assert out.mode == "RGB"
+# ── _parse_sse: SSE / plain JSON ──────────────────────────────
+def test_parse_sse_event_stream():
+    assert hgf._parse_sse(_sse({"result": {"ok": 1}})) == {"result": {"ok": 1}}
 
 
-# ── generate_tryon_multi (다중 의류 단일-호출) ────────────────────
+def test_parse_sse_plain_json():
+    assert hgf._parse_sse('{"a": 2}') == {"a": 2}
+
+
+def test_parse_sse_empty():
+    assert hgf._parse_sse("") == {}
+
+
+# ── _tool: 성공 / isError / 크레딧 부족 ───────────────────────
+def test_tool_returns_structured_content():
+    c = FakeClient([FakeResp(_sse({"result": {"structuredContent": {"v": 9}}}))])
+    assert hgf._tool(c, "x", {}, 1) == {"v": 9}
+
+
+def test_tool_error_raises_unavailable():
+    c = FakeClient([FakeResp(_sse({"result": {"isError": True,
+                                              "structuredContent": {"error": "boom"}}}))])
+    with pytest.raises(hgf.HiggsfieldUnavailable):
+        hgf._tool(c, "x", {}, 1)
+
+
+def test_tool_credit_error_raises_billing():
+    c = FakeClient([FakeResp(_sse({"result": {
+        "isError": True,
+        "structuredContent": {"recovery_tool": "show_plans_and_credits"},
+    }}))])
+    with pytest.raises(GenerativeBillingError):
+        hgf._tool(c, "generate_image", {}, 1)
+
+
+# ── _generate: job_id 파싱 ────────────────────────────────────
+def test_generate_parses_job_id(monkeypatch):
+    monkeypatch.setattr(hgf, "_tool", lambda *a, **k: {"results": [{"id": "job-9", "status": "pending"}]})
+    assert hgf._generate(object(), ["m"], "p") == "job-9"
+
+
+def test_generate_missing_id_raises(monkeypatch):
+    monkeypatch.setattr(hgf, "_tool", lambda *a, **k: {"results": []})
+    with pytest.raises(hgf.HiggsfieldUnavailable):
+        hgf._generate(object(), ["m"], "p")
+
+
+# ── _poll: completed / failed / timeout ───────────────────────
+def test_poll_completed_returns_url(monkeypatch):
+    monkeypatch.setattr(hgf.time, "sleep", lambda s: None)
+    seq = [
+        {"results": [{"status": "in_progress"}]},
+        {"results": [{"status": "completed", "results": {"rawUrl": "https://x/r.png"}}]},
+    ]
+    monkeypatch.setattr(hgf, "_tool", lambda *a, **k: seq.pop(0))
+    assert hgf._poll(object(), "job-1") == "https://x/r.png"
+
+
+def test_poll_failed_raises(monkeypatch):
+    monkeypatch.setattr(hgf.time, "sleep", lambda s: None)
+    monkeypatch.setattr(hgf, "_tool", lambda *a, **k: {"results": [{"status": "failed"}]})
+    with pytest.raises(hgf.HiggsfieldUnavailable):
+        hgf._poll(object(), "job-1")
+
+
+def test_poll_timeout_raises(monkeypatch):
+    monkeypatch.setattr(hgf.time, "sleep", lambda s: None)
+    monkeypatch.setattr(hgf, "POLL_MAX_ATTEMPTS", 3)
+    monkeypatch.setattr(hgf, "_tool", lambda *a, **k: {"results": [{"status": "queued"}]})
+    with pytest.raises(hgf.HiggsfieldUnavailable):
+        hgf._poll(object(), "job-1")
+
+
+# ── _build_prompt ─────────────────────────────────────────────
+def test_build_prompt_includes_all_garments():
+    p = hgf._build_prompt([("top", "upper_body"), ("shorts", "lower_body")])
+    assert "the exact top on the upper_body" in p
+    assert "the exact shorts on the lower_body" in p
+
+
+# ── generate_tryon_multi happy (플로우 단계 모킹) ──────────────
+def _patch_flow(monkeypatch, **over):
+    monkeypatch.setattr(hgf, "_session", over.get("session", lambda c: None))
+    monkeypatch.setattr(hgf, "_upload", over.get("upload", lambda c, imgs: ["m", "g0"]))
+    monkeypatch.setattr(hgf, "_generate", over.get("generate", lambda c, ids, p: "job-1"))
+    monkeypatch.setattr(hgf, "_poll", over.get("poll", lambda c, j: "https://x/r.png"))
+    monkeypatch.setattr(hgf, "_download", over.get("download", lambda u: Image.new("RGB", (8, 8))))
+
+
 def test_generate_tryon_multi_happy(monkeypatch, with_key, fake_client, img):
-    monkeypatch.setattr(hgf, "_submit_job", lambda *a, **k: "job-1")
-    monkeypatch.setattr(hgf, "_poll_job", lambda *a, **k: "ref://r")
-    monkeypatch.setattr(hgf, "_download", lambda *a, **k: Image.new("RGB", (8, 8)))
-
+    _patch_flow(monkeypatch)
     out = hgf.generate_tryon_multi(
         [(img, "top", "upper_body"), (img, "shorts", "lower_body")], img
     )
@@ -69,149 +166,51 @@ def test_generate_tryon_multi_happy(monkeypatch, with_key, fake_client, img):
     assert out.mode == "RGB"
 
 
-def test_generate_tryon_multi_empty_raises(with_key, img):
-    with pytest.raises(hgf.HiggsfieldUnavailable):
-        hgf.generate_tryon_multi([], img)
+def test_generate_tryon_single_wrapper(monkeypatch, with_key, fake_client, img):
+    captured = {}
+
+    def _upload(c, images):
+        captured["n"] = len(images)   # model + 1 garment = 2
+        return ["m", "g0"]
+    _patch_flow(monkeypatch, upload=_upload)
+    out = hgf.generate_tryon(img, img, "a top", "upper_body")
+    assert isinstance(out, Image.Image)
+    assert captured["n"] == 2
 
 
-# ── 키 없음 → Unavailable ─────────────────────────────────────
+def test_generate_tryon_multi_uploads_model_plus_garments(monkeypatch, with_key, fake_client, img):
+    captured = {}
+
+    def _upload(c, images):
+        captured["n"] = len(images)
+        return ["m"] + [f"g{i}" for i in range(len(images) - 1)]
+    _patch_flow(monkeypatch, upload=_upload)
+    hgf.generate_tryon_multi([(img, "top", "upper_body"), (img, "shorts", "lower_body")], img)
+    assert captured["n"] == 3          # model + 2 garments
+
+
 def test_generate_tryon_no_key(monkeypatch, img):
     monkeypatch.setattr(hgf, "API_KEY", "")
     with pytest.raises(hgf.HiggsfieldUnavailable):
         hgf.generate_tryon(img, img)
 
 
-# ── job 실패 → Unavailable ────────────────────────────────────
-def test_generate_tryon_job_failed(monkeypatch, with_key, fake_client, img):
-    def _boom(*a, **k):
-        raise hgf.HiggsfieldUnavailable("job failed")
-    monkeypatch.setattr(hgf, "_submit_job", lambda *a, **k: "job-1")
-    monkeypatch.setattr(hgf, "_poll_job", _boom)
+def test_generate_tryon_multi_empty_raises(with_key, img):
     with pytest.raises(hgf.HiggsfieldUnavailable):
-        hgf.generate_tryon(img, img)
+        hgf.generate_tryon_multi([], img)
 
 
-# ── poll 타임아웃 → Unavailable ───────────────────────────────
-def test_generate_tryon_poll_timeout(monkeypatch, with_key, fake_client, img):
-    def _timeout(*a, **k):
-        raise hgf.HiggsfieldUnavailable("poll timeout")
-    monkeypatch.setattr(hgf, "_submit_job", lambda *a, **k: "job-1")
-    monkeypatch.setattr(hgf, "_poll_job", _timeout)
-    with pytest.raises(hgf.HiggsfieldUnavailable):
-        hgf.generate_tryon(img, img)
-
-
-# ── 402 크레딧 부족 → BillingError (기존 402 경로 재사용) ──────
-def test_generate_tryon_billing(monkeypatch, with_key, fake_client, img):
-    class FakeResp:
-        status_code = 402
-        text = "insufficient credit"
-
-    def _402(*a, **k):
-        e = Exception("payment required")
-        e.response = FakeResp()
-        raise e
-
-    monkeypatch.setattr(hgf, "_submit_job", _402)
+def test_generate_tryon_billing_propagates(monkeypatch, with_key, fake_client, img):
+    def _bill(c, images):
+        raise GenerativeBillingError("no credit")
+    _patch_flow(monkeypatch, upload=_bill)
     with pytest.raises(GenerativeBillingError):
         hgf.generate_tryon(img, img)
 
 
-# ── 일반 네트워크 오류 → Unavailable ──────────────────────────
-def test_generate_tryon_network_error(monkeypatch, with_key, fake_client, img):
-    def _err(*a, **k):
-        raise RuntimeError("connection reset")
-    monkeypatch.setattr(hgf, "_submit_job", _err)
+def test_generate_tryon_unavailable_propagates(monkeypatch, with_key, fake_client, img):
+    def _boom(c, images):
+        raise hgf.HiggsfieldUnavailable("upload down")
+    _patch_flow(monkeypatch, upload=_boom)
     with pytest.raises(hgf.HiggsfieldUnavailable):
         hgf.generate_tryon(img, img)
-
-
-# ── REST 격리 계층 (httpx 모킹) ───────────────────────────────
-class FakeResp:
-    def __init__(self, json_data=None, content=b"", status=200):
-        self._json = json_data or {}
-        self.content = content
-        self.status_code = status
-
-    def raise_for_status(self):
-        pass
-
-    def json(self):
-        return self._json
-
-
-class FakeClient:
-    """post/get 응답을 큐로 제공하는 더미 httpx 클라이언트."""
-    def __init__(self, post_resp=None, get_resps=None):
-        self._post = post_resp
-        self._gets = list(get_resps or [])
-
-    def post(self, *a, **k):
-        return self._post
-
-    def get(self, *a, **k):
-        return self._gets.pop(0)
-
-
-def test_submit_job_parses_id(img):
-    c = FakeClient(post_resp=FakeResp({"id": "job-xyz"}))
-    assert hgf._submit_job(c, [(img, "a top", "upper_body")], img) == "job-xyz"
-
-
-def test_submit_job_missing_id_raises(img):
-    c = FakeClient(post_resp=FakeResp({"foo": "bar"}))
-    with pytest.raises(hgf.HiggsfieldUnavailable):
-        hgf._submit_job(c, [(img, "a top", "upper_body")], img)
-
-
-def test_submit_job_multi_input_images(img):
-    """다중 의류: input_images=[model, *garments], 프롬프트에 각 의류 반영."""
-    captured = {}
-
-    class CapClient:
-        def post(self, path, json):
-            captured["json"] = json
-            return FakeResp({"id": "j"})
-
-    hgf._submit_job(
-        CapClient(),
-        [(img, "top", "upper_body"), (img, "shorts", "lower_body")],
-        img,
-    )
-    assert len(captured["json"]["input_images"]) == 3   # model + 2 garments
-    assert "the exact top on the upper_body" in captured["json"]["prompt"]
-    assert "the exact shorts on the lower_body" in captured["json"]["prompt"]
-
-
-def test_poll_completed_returns_url(monkeypatch):
-    monkeypatch.setattr(hgf.time, "sleep", lambda s: None)
-    c = FakeClient(get_resps=[
-        FakeResp({"status": "Queued"}),
-        FakeResp({"status": "InProgress"}),
-        FakeResp({"status": "Completed", "images": [{"url": "https://x/r.png"}]}),
-    ])
-    assert hgf._poll_job(c, "job-1") == "https://x/r.png"
-
-
-def test_poll_failed_raises(monkeypatch):
-    monkeypatch.setattr(hgf.time, "sleep", lambda s: None)
-    c = FakeClient(get_resps=[FakeResp({"status": "Failed"})])
-    with pytest.raises(hgf.HiggsfieldUnavailable):
-        hgf._poll_job(c, "job-1")
-
-
-def test_poll_timeout_raises(monkeypatch):
-    monkeypatch.setattr(hgf.time, "sleep", lambda s: None)
-    monkeypatch.setattr(hgf, "POLL_MAX_ATTEMPTS", 3)
-    c = FakeClient(get_resps=[FakeResp({"status": "Queued"})] * 3)
-    with pytest.raises(hgf.HiggsfieldUnavailable):
-        hgf._poll_job(c, "job-1")
-
-
-def test_download_returns_image():
-    import io as _io
-    buf = _io.BytesIO()
-    Image.new("RGB", (16, 16), (5, 6, 7)).save(buf, "PNG")
-    c = FakeClient(get_resps=[FakeResp(content=buf.getvalue())])
-    out = hgf._download(c, "https://x/r.png")
-    assert isinstance(out, Image.Image)

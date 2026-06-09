@@ -1,47 +1,41 @@
 """
-Higgsfield 생성형 프로바이더 — try-on 착용 컷 클라우드 API 클라이언트.
+Higgsfield 생성형 프로바이더 — MCP 서버 채널 try-on 클라이언트.
 
 설계: docs/superpowers/specs/2026-06-08-higgsfield-provider-design.md
 
-흐름 (비동기 job 모델):
+전송 채널 (2026-06-09 결정):
+  프로덕션 REST 호스트(api.higgsfield.ai)가 522로 미동작하여, 동작하는 유일
+  채널인 **MCP 서버**(https://mcp.higgsfield.ai/mcp, JSON-RPC over streamable
+  HTTP, Bearer 인증)를 직접 호출한다. 스펙 잠긴 전제 2를 뒤집는 결정이나,
+  전제 2의 가정(working REST 존재)이 실측으로 거짓이었다.
+
+흐름 (scripts/hgf_mcp_probe.py로 검증된 호출 형태):
   ┌────────────────────────────────────────────────────────────┐
-  │ 1. 의류 + 모델 템플릿 업로드 (REST)                         │
-  │ 2. 생성 job 제출 → job_id 수신                              │
-  │ 3. 고정 간격(POLL_INTERVAL) 폴링 → 완료/실패/타임아웃      │
-  │ 4. 결과 이미지 다운로드 → PIL 반환                          │
+  │ initialize → notifications/initialized                      │
+  │ media_upload(presigned) → PUT bytes → media_confirm         │
+  │ generate_image(model, prompt, medias[{value,role}])         │
+  │ job_display 폴링(results[0].status) → rawUrl 다운로드        │
   └────────────────────────────────────────────────────────────┘
 
 범위:
-  - 다중 의류 단일-호출 입력 (input_images:[model, *garments]).
-    2026-06-09 MCP 검증: 단일-호출 다중입력은 Leffa 순차 체이닝의 drift를 우회
-    (설계 문서 Open Q1). generate_tryon(단일)은 하위 호환 래퍼로 유지.
-  - 키 없으면 is_available()==False → laongen_engine 캐스케이드 폴백
+  - 다중 의류 단일-호출 입력 (medias:[model, *garments]).
+    2026-06-09 검증: 단일-호출 다중입력은 Leffa 순차 체이닝의 drift를 우회.
+    generate_tryon(단일)은 하위 호환 래퍼로 유지.
+  - 키 없으면 is_available()==False → laongen_engine 캐스케이드 폴백.
 
-크레딧 부족(402)은 generative_provider.GenerativeBillingError를 재사용해
-기존 402 처리 경로(api/generate.py)와 일관되게 동작한다.
+크레딧 부족은 generative_provider.GenerativeBillingError를 재사용해 기존 402
+처리 경로(api/generate.py)와 일관되게 동작한다.
 
 환경변수:
-  HIGGSFIELD_API_KEY    : Higgsfield REST 인증 키 (없으면 비활성)
-  HIGGSFIELD_API_BASE   : REST 베이스 URL (기본 https://api.higgsfield.ai)
-  HIGGSFIELD_TRYON_MODEL: try-on 모델 id (기본 nano-banana-pro)
+  HIGGSFIELD_API_KEY    : MCP Bearer 토큰 (없으면 비활성)
+  HIGGSFIELD_MCP_URL    : MCP 엔드포인트 (기본 https://mcp.higgsfield.ai/mcp)
+  HIGGSFIELD_TRYON_MODEL: 생성 모델 id (기본 nano_banana_pro)
   HIGGSFIELD_CA_BUNDLE  : 사내 프록시 SSL 가로채기용 루트 CA (.pem/.crt)
-
-REST 스펙 출처 (api.higgsfield.ai 공개 문서):
-  - POST /v1/generations  (Bearer 인증, JSON: task/model/prompt/input_image)
-  - GET  /v1/generations/{id}  상태 Queued/InProgress/Completed/Failed/NSFW/Cancelled
-  - 결과: images[0].url
-
-NOTE [Open Q2 — 부분 확정]:
-  전송 계약(엔드포인트/인증/폴링/결과 형태)은 공개 문서로 확정됨.
-  단 try-on 특화 매핑 2가지는 **라이브 키로 검증 필요한 가정**:
-    (A) try-on 모델 id (HIGGSFIELD_TRYON_MODEL)
-    (B) 의류+모델 2장 입력 방식 — 현재 input_images:[model, garment] 가정
-  검증 후 _submit_job 의 payload만 조정하면 된다.
 """
 import os
 import io
+import json
 import time
-import base64
 from PIL import Image
 
 # generative_provider의 결제 예외를 재사용 (402 경로 일관성)
@@ -62,14 +56,19 @@ class HiggsfieldUnavailable(Exception):
 
 # ── 설정 ──────────────────────────────────────────────────────
 API_KEY     = os.environ.get("HIGGSFIELD_API_KEY", "").strip()
-API_BASE    = os.environ.get("HIGGSFIELD_API_BASE", "https://api.higgsfield.ai").strip()
-TRYON_MODEL = os.environ.get("HIGGSFIELD_TRYON_MODEL", "nano-banana-pro").strip()
+MCP_URL     = os.environ.get("HIGGSFIELD_MCP_URL", "https://mcp.higgsfield.ai/mcp").strip()
+TRYON_MODEL = os.environ.get("HIGGSFIELD_TRYON_MODEL", "nano_banana_pro").strip()
+ASPECT      = "2:3"
 
 # 고정 간격 폴링 (eng-review 성능 결정: 고정 간격 + 최대 타임아웃)
 POLL_INTERVAL_SEC = 3
 POLL_MAX_ATTEMPTS = 40          # 3s * 40 = 최대 120초
 
-# 의류 타입 → Higgsfield try-on 카테고리 매핑
+# job 완료/실패 상태
+_DONE_OK   = {"completed"}
+_DONE_FAIL = {"failed", "nsfw", "canceled", "cancelled"}
+
+# 의류 타입 → try-on 카테고리 매핑 (프롬프트 문구용)
 CATEGORY_MAP = {
     "top":       "upper_body",
     "bottom":    "lower_body",
@@ -110,85 +109,134 @@ def _resolve_verify():
         return True
 
 
+def _headers() -> dict:
+    return {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "Authorization": f"Bearer {API_KEY}",
+    }
+
+
 def _client():
     import httpx
-    return httpx.Client(
-        base_url=API_BASE,
-        headers={"Authorization": f"Bearer {API_KEY}"},
-        verify=_resolve_verify(),
-        timeout=30,
-    )
+    return httpx.Client(verify=_resolve_verify(), timeout=60)
 
 
-def _pil_to_data_uri(img: Image.Image, fmt: str = "PNG") -> str:
-    buf = io.BytesIO()
-    img.convert("RGB").save(buf, format=fmt)
-    return f"data:image/{fmt.lower()};base64,{base64.b64encode(buf.getvalue()).decode()}"
+# ── MCP JSON-RPC 격리 계층 ─────────────────────────────────────
+def _parse_sse(text: str) -> dict:
+    """streamable-HTTP 응답(SSE 또는 JSON)에서 JSON-RPC 페이로드 추출."""
+    if not text:
+        return {}
+    for line in text.splitlines():
+        if line.startswith("data:"):
+            return json.loads(line[5:].strip())
+    try:
+        return json.loads(text)
+    except Exception:
+        return {}
 
 
-def _raise_for_billing(status_code: int, body: str):
-    """402/크레딧 부족이면 결제 예외(기존 경로와 일관)."""
-    if status_code == 402 or "insufficient credit" in body.lower() or "billing" in body.lower():
-        raise GenerativeBillingError(
-            "Higgsfield 크레딧이 부족합니다. 계정에서 충전 후 다시 시도하세요."
-        )
+def _rpc(client, method: str, params=None, rid=None) -> dict:
+    body = {"jsonrpc": "2.0", "method": method}
+    if rid is not None:
+        body["id"] = rid
+    if params is not None:
+        body["params"] = params
+    resp = client.post(MCP_URL, headers=_headers(), json=body)
+    resp.raise_for_status()
+    return _parse_sse(resp.text)
 
 
-# ── REST 격리 계층 (api.higgsfield.ai 공개 스펙) ────────────────
-_DONE_OK   = {"completed"}
-_DONE_FAIL = {"failed", "nsfw", "cancelled"}
+def _session(client):
+    """initialize + initialized 핸드셰이크."""
+    _rpc(client, "initialize", {
+        "protocolVersion": "2024-11-05",
+        "capabilities": {},
+        "clientInfo": {"name": "laongen", "version": "1.0"},
+    }, rid=1)
+    _rpc(client, "notifications/initialized")
+
+
+def _tool(client, name: str, args: dict, rid: int) -> dict:
+    """tools/call → structuredContent. isError면 예외(크레딧 부족은 BillingError)."""
+    data = _rpc(client, "tools/call", {"name": name, "arguments": args}, rid)
+    res  = data.get("result", {})
+    if res.get("isError"):
+        sc   = res.get("structuredContent") or {}
+        body = json.dumps(sc) + json.dumps(res.get("content", ""))
+        if sc.get("recovery_tool") == "show_plans_and_credits" or \
+           "insufficient" in body.lower() or "credit" in body.lower():
+            raise GenerativeBillingError(
+                "Higgsfield 크레딧이 부족합니다. 계정에서 충전 후 다시 시도하세요."
+            )
+        raise HiggsfieldUnavailable(f"{name} 실패: {sc or res.get('content')}")
+    return res.get("structuredContent") or {}
+
+
+# ── try-on 플로우 단계 ─────────────────────────────────────────
+def _upload(client, images: list) -> list:
+    """images: [(PIL, content_type, filename)] → [media_id].
+
+    media_upload(presigned) → 각 upload_url에 PUT → media_confirm.
+    """
+    import httpx
+
+    files = [{"filename": fn, "content_type": ct} for _, ct, fn in images]
+    up = _tool(client, "media_upload", {"files": files}, rid=2)
+    uploads = up.get("uploads") or []
+    if len(uploads) != len(images):
+        raise HiggsfieldUnavailable(f"media_upload 응답 불일치: {up}")
+
+    for u, (img, ct, _fn) in zip(uploads, images):
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, format="PNG" if ct == "image/png" else "JPEG")
+        r = httpx.put(u["upload_url"], headers={"Content-Type": u["content_type"]},
+                      content=buf.getvalue(), timeout=60, verify=_resolve_verify())
+        r.raise_for_status()
+
+    ids = [u["media_id"] for u in uploads]
+    _tool(client, "media_confirm", {"type": "image", "media_ids": ids}, rid=3)
+    return ids
 
 
 def _build_prompt(items: list) -> str:
     """items: [(garment_desc, category), ...] → try-on 프롬프트."""
     worn = "; ".join(f"the exact {desc} on the {cat}" for desc, cat in items)
     return (
-        f"A full-body fashion photo of a model wearing {worn}, "
-        f"preserving every garment detail (collar, buttons, pattern, texture, "
-        f"hardware). Neutral studio background, front view."
+        f"Full-body fashion photo of the model from the first reference image "
+        f"wearing {worn}, preserving every garment detail (collar, buttons, "
+        f"pattern, texture, hardware). Neutral studio background, front view, "
+        f"photorealistic."
     )
 
 
-def _submit_job(client, garments: list, model_template: Image.Image) -> str:
-    """POST /v1/generations → job_id.
-
-    garments: [(garment_img, garment_desc, category), ...]
-
-    가정[Open Q2-B]: 모델+의류 N장을 input_images 배열([model, *garments])로
-    전달. 라이브 검증 후 페이로드 조정.
-    """
-    payload = {
-        "task":  "image-to-image",
+def _generate(client, media_ids: list, prompt: str) -> str:
+    """generate_image → job_id."""
+    gen = _tool(client, "generate_image", {"params": {
         "model": TRYON_MODEL,
-        "prompt": _build_prompt([(desc, cat) for _, desc, cat in garments]),
-        "input_images": [_pil_to_data_uri(model_template)]
-        + [_pil_to_data_uri(g) for g, _, _ in garments],
-    }
-    resp = client.post("/v1/generations", json=payload)
-    resp.raise_for_status()
-    data = resp.json()
-    job_id = data.get("id") or data.get("request_id")
-    if not job_id:
-        raise HiggsfieldUnavailable(f"job_id 없음: {data}")
-    return job_id
+        "prompt": prompt,
+        "aspect_ratio": ASPECT,
+        "medias": [{"value": mid, "role": "image"} for mid in media_ids],
+    }}, rid=4)
+    results = gen.get("results") or []
+    if not results or not results[0].get("id"):
+        raise HiggsfieldUnavailable(f"generate_image 결과 없음: {gen}")
+    return results[0]["id"]
 
 
-def _poll_job(client, job_id: str) -> str:
-    """GET /v1/generations/{id} 고정 간격 폴링 → 결과 이미지 URL.
-
-    Completed → URL, Failed/NSFW/Cancelled → Unavailable, 상한 초과 → Unavailable.
-    """
+def _poll(client, job_id: str) -> str:
+    """job_display 고정 간격 폴링 → 결과 이미지 URL."""
     for _ in range(POLL_MAX_ATTEMPTS):
-        resp = client.get(f"/v1/generations/{job_id}")
-        resp.raise_for_status()
-        data   = resp.json()
-        status = str(data.get("status", "")).lower()
+        disp    = _tool(client, "job_display", {"id": job_id}, rid=5)
+        results = disp.get("results") or []
+        status  = str(results[0].get("status", "")).lower() if results else ""
 
         if status in _DONE_OK:
-            images = data.get("images") or []
-            if not images or not images[0].get("url"):
-                raise HiggsfieldUnavailable(f"완료됐으나 결과 URL 없음: {data}")
-            return images[0]["url"]
+            res = (results[0].get("results") or {})
+            url = res.get("rawUrl") or res.get("minUrl")
+            if not url:
+                raise HiggsfieldUnavailable(f"완료됐으나 결과 URL 없음: {disp}")
+            return url
         if status in _DONE_FAIL:
             raise HiggsfieldUnavailable(f"job 실패 (status={status})")
 
@@ -199,9 +247,10 @@ def _poll_job(client, job_id: str) -> str:
     )
 
 
-def _download(client, result_ref: str) -> Image.Image:
-    """결과 URL → PIL 이미지."""
-    resp = client.get(result_ref)
+def _download(url: str) -> Image.Image:
+    """결과 URL(공개 CDN) → PIL 이미지."""
+    import httpx
+    resp = httpx.get(url, timeout=60, verify=_resolve_verify())
     resp.raise_for_status()
     return Image.open(io.BytesIO(resp.content))
 
@@ -212,9 +261,9 @@ def generate_tryon_multi(
     model_template: Image.Image,
 ) -> Image.Image:
     """
-    Higgsfield로 다중 의류 풀코디 착용 컷 생성 (단일-호출 다중입력).
+    Higgsfield(MCP)로 다중 의류 풀코디 착용 컷 생성 (단일-호출 다중입력).
 
-    2026-06-09 MCP 검증: 모델+의류 N장을 한 번에 입력하면 Leffa 순차 체이닝의
+    2026-06-09 검증: 모델+의류 N장을 한 번에 입력하면 Leffa 순차 체이닝의
     drift 없이 풀코디가 보존된다(설계 문서 Open Q1).
 
     Args:
@@ -226,7 +275,7 @@ def generate_tryon_multi(
 
     Raises:
         HiggsfieldUnavailable : 키 없음 / 입력 없음 / job 실패 / 타임아웃 / 네트워크 오류
-        GenerativeBillingError: 크레딧 부족 (402)
+        GenerativeBillingError: 크레딧 부족
     """
     if not API_KEY:
         raise HiggsfieldUnavailable("HIGGSFIELD_API_KEY가 설정되지 않았습니다.")
@@ -238,25 +287,29 @@ def generate_tryon_multi(
     except ImportError:
         raise HiggsfieldUnavailable("httpx 패키지가 설치되지 않았습니다.")
 
-    prepared = [(g.convert("RGB"), desc, cat) for g, desc, cat in garments]
-    model    = model_template.convert("RGB")
+    # 업로드 순서 = [모델, *의류], 프롬프트의 "first reference image"가 모델
+    images = [(model_template.convert("RGB"), "image/jpeg", "model.jpg")]
+    items  = []
+    for i, (g, desc, cat) in enumerate(garments):
+        images.append((g.convert("RGB"), "image/png", f"garment{i}.png"))
+        items.append((desc, cat))
 
     try:
         with _client() as client:
-            job_id     = _submit_job(client, prepared, model)
-            result_ref = _poll_job(client, job_id)
-            return _download(client, result_ref).convert("RGB")
+            _session(client)
+            media_ids = _upload(client, images)
+            job_id    = _generate(client, media_ids, _build_prompt(items))
+            url       = _poll(client, job_id)
+            return _download(url).convert("RGB")
     except GenerativeBillingError:
         raise
     except HiggsfieldUnavailable:
         raise
     except Exception as e:
-        # httpx HTTPStatusError 등에서 402 감지
         status = getattr(getattr(e, "response", None), "status_code", None)
-        body   = getattr(getattr(e, "response", None), "text", "") or str(e)
-        if status is not None:
-            _raise_for_billing(status, body)
-        raise HiggsfieldUnavailable(f"Higgsfield 호출 실패: {e}")
+        if status == 402:
+            raise GenerativeBillingError("Higgsfield 크레딧이 부족합니다.")
+        raise HiggsfieldUnavailable(f"Higgsfield(MCP) 호출 실패: {e}")
 
 
 def generate_tryon(
