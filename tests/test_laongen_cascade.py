@@ -82,13 +82,26 @@ def test_higgsfield_multi_single_call(monkeypatch, img):
     _avail(monkeypatch, True, False, False)
     calls = []
 
-    def _cap(garments, model):
+    def _cap(garments, model, subject="model"):
         calls.append(garments)
         return Image.new("RGB", (8, 8))
     monkeypatch.setattr(hgf, "generate_tryon_multi", _cap)
     eng.generate_model_shot([(img, "top"), (img, "bottom")])
     assert len(calls) == 1            # 단일 호출
     assert len(calls[0]) == 2         # 2벌 모두 한 호출에 전달
+
+
+def test_subject_mannequin_forwarded_to_higgsfield(monkeypatch, img):
+    """마네킹 모드: subject='mannequin'이 higgsfield 러너까지 전달된다."""
+    _avail(monkeypatch, True, False, False)
+    seen = {}
+
+    def _cap(garments, model, subject="model"):
+        seen["subject"] = subject
+        return Image.new("RGB", (8, 8))
+    monkeypatch.setattr(hgf, "generate_tryon_multi", _cap)
+    eng.generate_model_shot([(img, "top")], subject="mannequin")
+    assert seen["subject"] == "mannequin"
 
 
 def test_backend_hf_does_not_use_higgsfield(monkeypatch, garments):

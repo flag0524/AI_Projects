@@ -15,8 +15,9 @@ export async function submitFitting({ mannequinFile, garments }) {
   return res.data
 }
 
-// 생성형 모델 컷 (Leffa/Higgsfield try-on) — 비동기 job: 제출 후 결과 폴링
-export async function submitGenerate({ garments, modelTemplateFile, mannequinFile }) {
+// 생성형 착용 컷 (Leffa/Higgsfield try-on) — 비동기 job: 제출 후 결과 폴링
+// subject: 'model'(실제 모델) | 'mannequin'(마네킹 디스플레이)
+export async function submitGenerate({ garments, modelTemplateFile, mannequinFile, subject = 'model' }) {
   const formData = new FormData()
   garments.forEach(({ file, type }) => {
     formData.append('garment_images', file)
@@ -24,6 +25,7 @@ export async function submitGenerate({ garments, modelTemplateFile, mannequinFil
   })
   if (modelTemplateFile) formData.append('model_template_image', modelTemplateFile)
   if (mannequinFile) formData.append('mannequin_image', mannequinFile)
+  formData.append('subject', subject)
 
   // 1) 제출 → 202 { job_id }
   const submit = await axios.post('/api/v1/generate', formData, {

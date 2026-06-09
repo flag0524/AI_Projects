@@ -199,14 +199,27 @@ def _upload(client, images: list) -> list:
     return ids
 
 
-def _build_prompt(items: list) -> str:
-    """items: [(garment_desc, category), ...] → try-on 프롬프트."""
+def _build_prompt(items: list, subject: str = "model") -> str:
+    """items: [(garment_desc, category), ...] → try-on 프롬프트.
+
+    subject: "model"(실제 모델) | "mannequin"(드레스폼 마네킹 디스플레이).
+    """
     worn = "; ".join(f"the exact {desc} on the {cat}" for desc, cat in items)
+    if subject == "mannequin":
+        scene = (
+            f"Professional retail product display photograph of the EXACT same "
+            f"headless tailor's dress-form mannequin from the first reference image "
+            f"(keep it a mannequin display — no head, no skin, no face), dressed in "
+            f"{worn}"
+        )
+    else:
+        scene = (
+            f"Full-body fashion photo of the model from the first reference image "
+            f"wearing {worn}"
+        )
     return (
-        f"Full-body fashion photo of the model from the first reference image "
-        f"wearing {worn}, preserving every garment detail (collar, buttons, "
-        f"pattern, texture, hardware). Neutral studio background, front view, "
-        f"photorealistic."
+        f"{scene}, preserving every garment detail (collar, buttons, pattern, "
+        f"texture, hardware). Neutral studio background, front view, photorealistic."
     )
 
 
@@ -259,6 +272,7 @@ def _download(url: str) -> Image.Image:
 def generate_tryon_multi(
     garments:       list,
     model_template: Image.Image,
+    subject:        str = "model",
 ) -> Image.Image:
     """
     Higgsfield(MCP)로 다중 의류 풀코디 착용 컷 생성 (단일-호출 다중입력).
@@ -268,7 +282,8 @@ def generate_tryon_multi(
 
     Args:
         garments       : [(garment_img, garment_desc, category), ...]
-        model_template : 표준 모델 사진
+        model_template : 기준 figure 사진 (실제 모델 또는 마네킹)
+        subject        : "model"(실제 모델) | "mannequin"(드레스폼 디스플레이)
 
     Returns:
         착용 결과 이미지 (PIL RGB)
@@ -287,8 +302,8 @@ def generate_tryon_multi(
     except ImportError:
         raise HiggsfieldUnavailable("httpx 패키지가 설치되지 않았습니다.")
 
-    # 업로드 순서 = [모델, *의류], 프롬프트의 "first reference image"가 모델
-    images = [(model_template.convert("RGB"), "image/jpeg", "model.jpg")]
+    # 업로드 순서 = [기준 figure, *의류], 프롬프트의 "first reference image"가 figure
+    images = [(model_template.convert("RGB"), "image/jpeg", "figure.jpg")]
     items  = []
     for i, (g, desc, cat) in enumerate(garments):
         images.append((g.convert("RGB"), "image/png", f"garment{i}.png"))
@@ -298,7 +313,7 @@ def generate_tryon_multi(
         with _client() as client:
             _session(client)
             media_ids = _upload(client, images)
-            job_id    = _generate(client, media_ids, _build_prompt(items))
+            job_id    = _generate(client, media_ids, _build_prompt(items, subject))
             url       = _poll(client, job_id)
             return _download(url).convert("RGB")
     except GenerativeBillingError:

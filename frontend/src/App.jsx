@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import UploadPanel from './components/UploadPanel.jsx'
 import ResultPanel from './components/ResultPanel.jsx'
 import LoadingSpinner from './components/LoadingSpinner.jsx'
-import { submitFitting, submitGenerate, fetchGenerateStatus } from './api/fitApi.js'
+import { submitGenerate, fetchGenerateStatus } from './api/fitApi.js'
 
 const MODES = [
   { value: 'generate', label: '모델 컷 생성', desc: '실제 모델 착용 컷 (AI)' },
@@ -31,10 +31,17 @@ export default function App() {
         setMs(data.processing_time_ms)
         setMethod(data.method)
       } else {
-        const data = await submitFitting(payload)
-        setResult(data.fitted_image_base64)
+        // 마네킹 피팅: 마네킹을 기준 figure로 생성형 경로 사용 (자연스러운 마네킹 디스플레이).
+        // 생성형 불가 시 백엔드 캐스케이드가 절차적 합성으로 안전 폴백.
+        const data = await submitGenerate({
+          garments: payload.garments,
+          modelTemplateFile: payload.mannequinFile,
+          mannequinFile: payload.mannequinFile,
+          subject: 'mannequin',
+        })
+        setResult(data.result_image_base64)
         setMs(data.processing_time_ms)
-        setMethod('procedural')
+        setMethod(data.method)
       }
     } catch (e) {
       setError(e.response?.data?.detail || '처리 중 오류가 발생했습니다.')

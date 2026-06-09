@@ -80,14 +80,17 @@ def generate_model_shot(
     garments:       list[tuple[Image.Image, str]],
     model_template: Image.Image = None,
     mannequin_img:  Image.Image = None,
+    subject:        str = "model",
 ) -> tuple[Image.Image, str]:
     """
     의류 목록으로 모델 착용 컷 생성.
 
     Args:
         garments       : [(의류 이미지, 타입), ...]
-        model_template : 표준 모델 사진 (없으면 기본 템플릿)
+        model_template : 기준 figure 사진 (없으면 기본 모델 템플릿)
         mannequin_img  : 폴백용 마네킹 이미지
+        subject        : "model"(실제 모델) | "mannequin"(마네킹 디스플레이).
+                         생성형 백엔드 프롬프트에만 영향, 폴백은 무관.
 
     Returns:
         (결과 이미지, 사용된 방식 "higgsfield" | "hf" | "generative" | "procedural")
@@ -107,12 +110,17 @@ def generate_model_shot(
 
     chain = _CHAINS.get(backend, _CHAINS["hf"])
 
+    # 마네킹은 Higgsfield만 입힐 수 있다 (Leffa/Replicate는 인체 필요 → 항상 실패).
+    # 불필요한(유료 포함) 시도를 건너뛰고 바로 절차적 폴백으로 가도록 체인 제한.
+    if subject == "mannequin":
+        chain = [c for c in chain if c == "higgsfield"]
+
     for name in chain:
         is_avail, runner, exc_types, method = _RUNNERS[name]
         if not is_avail():
             continue
         try:
-            return runner(ordered, model_template), method
+            return runner(ordered, model_template, subject), method
         except GenerativeBillingError:
             raise                       # 크레딧 부족은 폴백 금지, 그대로 전파
         except exc_types:
@@ -123,18 +131,24 @@ def generate_model_shot(
 
 
 # ── 백엔드 러너 ────────────────────────────────────────────────
-def _run_higgsfield(ordered, model_template):
-    """Higgsfield: 다중 의류 단일-호출 풀코디 (2026-06-09 검증: 순차 drift 우회)."""
-    model    = (model_template or make_default_model_template()).convert("RGB")
+def _run_higgsfield(ordered, model_template, subject="model"):
+    """Higgsfield: 다중 의류 단일-호출 풀코디 (2026-06-09 검증: 순차 drift 우회).
+
+    subject="mannequin"이면 model_template(마네킹)을 입힌 디스플레이 컷 생성.
+    """
+    figure   = (model_template or make_default_model_template()).convert("RGB")
     garments = [
         (garment_img.convert("RGB"), _desc(gtype), hgf.to_category(gtype))
         for garment_img, gtype in ordered
     ]
-    return hgf.generate_tryon_multi(garments, model)
+    return hgf.generate_tryon_multi(garments, figure, subject=subject)
 
 
-def _run_hf(ordered, model_template):
-    """HF Leffa/IDM-VTON: 흰 배경 제품 사진 직접 처리 (분리 불필요), 순차 적용."""
+def _run_hf(ordered, model_template, subject="model"):
+    """HF Leffa/IDM-VTON: 흰 배경 제품 사진 직접 처리 (분리 불필요), 순차 적용.
+
+    Leffa는 인체(DensePose) 필요 — subject는 무시(마네킹은 생성 실패→캐스케이드).
+    """
     current = (model_template or make_default_model_template()).convert("RGB")
     for garment_img, gtype in ordered:
         current = hf.generate_tryon(
@@ -146,8 +160,8 @@ def _run_hf(ordered, model_template):
     return current
 
 
-def _run_replicate(ordered, model_template):
-    """Replicate IDM-VTON: 의류 분리 후 순차 적용."""
+def _run_replicate(ordered, model_template, subject="model"):
+    """Replicate IDM-VTON: 의류 분리 후 순차 적용 (subject 무시)."""
     current = model_template or make_default_model_template()
     for garment_img, gtype in ordered:
         isolated = isolate_garment(garment_img)

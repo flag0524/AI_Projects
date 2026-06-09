@@ -148,6 +148,30 @@ def test_build_prompt_includes_all_garments():
     assert "the exact shorts on the lower_body" in p
 
 
+def test_build_prompt_model_vs_mannequin():
+    items = [("top", "upper_body")]
+    model = hgf._build_prompt(items, "model")
+    mann  = hgf._build_prompt(items, "mannequin")
+    assert "model from the first reference" in model
+    assert "mannequin" in mann.lower() and "no head" in mann.lower()
+
+
+def test_generate_tryon_multi_passes_subject(monkeypatch, with_key, fake_client, img):
+    seen = {}
+    monkeypatch.setattr(hgf, "_session", lambda c: None)
+    monkeypatch.setattr(hgf, "_upload", lambda c, imgs: ["f", "g0"])
+    monkeypatch.setattr(hgf, "_poll", lambda c, j: "https://x/r.png")
+    monkeypatch.setattr(hgf, "_download", lambda u: Image.new("RGB", (8, 8)))
+
+    def _gen(client, ids, prompt):
+        seen["prompt"] = prompt
+        return "job-1"
+    monkeypatch.setattr(hgf, "_generate", _gen)
+
+    hgf.generate_tryon_multi([(img, "top", "upper_body")], img, subject="mannequin")
+    assert "mannequin" in seen["prompt"].lower()
+
+
 # ── generate_tryon_multi happy (플로우 단계 모킹) ──────────────
 def _patch_flow(monkeypatch, **over):
     monkeypatch.setattr(hgf, "_session", over.get("session", lambda c: None))

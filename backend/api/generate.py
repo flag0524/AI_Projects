@@ -81,7 +81,7 @@ def status():
     }
 
 
-def _run_job(job_id, garments, template, mannequin):
+def _run_job(job_id, garments, template, mannequin, subject):
     """백그라운드 스레드: 블로킹 생성을 실행하고 job 상태 갱신."""
     t0 = time.time()
     try:
@@ -89,6 +89,7 @@ def _run_job(job_id, garments, template, mannequin):
             garments       = garments,
             model_template = template,
             mannequin_img  = mannequin,
+            subject        = subject,
         )
         _set_job(
             job_id,
@@ -109,12 +110,15 @@ async def generate(
     garment_types:   List[str]              = Form(...),
     model_template_image:  Optional[UploadFile] = File(None),
     mannequin_image: Optional[UploadFile]   = File(None),
+    subject:         str                    = Form("model"),
 ):
     if len(garment_images) != len(garment_types):
         raise HTTPException(422, "garment_images와 garment_types 개수가 다릅니다.")
     for gt in garment_types:
         if gt not in ALLOWED:
             raise HTTPException(422, f"허용되지 않는 의류 타입: {gt}")
+    if subject not in ("model", "mannequin"):
+        raise HTTPException(422, f"허용되지 않는 subject: {subject}")
 
     # 입력은 요청 컨텍스트에서 읽어야 하므로 여기서 PIL로 디코드
     garments = []
@@ -129,7 +133,7 @@ async def generate(
     _set_job(job_id, status="processing")
     threading.Thread(
         target=_run_job,
-        args=(job_id, garments, template, mannequin),
+        args=(job_id, garments, template, mannequin, subject),
         daemon=True,
     ).start()
 
