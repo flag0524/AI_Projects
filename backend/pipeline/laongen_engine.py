@@ -26,6 +26,8 @@ from backend.pipeline.bg_remover import remove_background
 from backend.pipeline.preprocessor import preprocess
 from backend.pipeline import generative_provider as gen
 from backend.pipeline import hf_provider as hf
+from backend.pipeline import higgsfield_provider as hgf
+from backend.pipeline.generative_provider import GenerativeBillingError
 from backend.pipeline.body_analyzer import get_mask_from_image, detect_body_regions
 from backend.pipeline.garment_warper import warp_garment, fallback_affine_warp
 from backend.pipeline.composer import compose
@@ -88,12 +90,14 @@ def generate_model_shot(
         mannequin_img  : 폴백용 마네킹 이미지
 
     Returns:
-        (결과 이미지, 사용된 방식 "hf" | "generative" | "procedural")
+        (결과 이미지, 사용된 방식 "higgsfield" | "hf" | "generative" | "procedural")
 
-    백엔드 우선순위:
-      1. HuggingFace Spaces (무료, 기본)
-      2. Replicate IDM-VTON (유료, REPLICATE_API_TOKEN 설정 시)
-      3. 절차적 합성 (폴백)
+    백엔드 캐스케이드 (GEN_BACKEND):
+      - "auto" / "higgsfield" : higgsfield → hf → replicate → 절차적
+      - "hf"                  : hf → 절차적
+      - "replicate"           : replicate → 절차적
+    각 백엔드가 Unavailable이면 다음으로 폴백. 크레딧 부족(BillingError)은
+    폴백하지 않고 그대로 전파 (api/generate.py가 402 처리).
     """
     # 상의를 먼저, 하의를 마지막에 적용.
     # (상의가 길게 내려와도 하의 try-on이 마지막에 허리 아래를 덮어 보정)
@@ -101,43 +105,77 @@ def generate_model_shot(
     ordered  = sorted(garments, key=lambda x: order.get(x[1], 9))
     backend  = os.environ.get("GEN_BACKEND", "hf").strip().lower()
 
-    # ── 1. HuggingFace Spaces (무료, 기본) ─────────────────────
-    if backend in ("hf", "auto") and hf.is_available():
-        try:
-            current = (model_template or make_default_model_template()).convert("RGB")
-            for garment_img, gtype in ordered:
-                # Leffa/IDM-VTON은 흰 배경 제품 사진을 직접 처리 (분리 불필요)
-                garm = garment_img.convert("RGB")
-                current = hf.generate_tryon(
-                    human_img    = current,
-                    garment_img  = garm,
-                    garment_type = gtype,
-                    garment_des  = _desc(gtype),
-                )
-            return current, "hf"
-        except hf.HFUnavailable:
-            pass  # Replicate 또는 절차적 폴백으로 진행
+    chain = _CHAINS.get(backend, _CHAINS["hf"])
 
-    # ── 2. Replicate IDM-VTON (유료) ───────────────────────────
-    if backend in ("replicate", "auto") and gen.is_available():
+    for name in chain:
+        is_avail, runner, exc_types, method = _RUNNERS[name]
+        if not is_avail():
+            continue
         try:
-            current = model_template or make_default_model_template()
-            for garment_img, gtype in ordered:
-                isolated = isolate_garment(garment_img)
-                current  = gen.generate_tryon(
-                    garment_img    = isolated,
-                    model_template = current,
-                    garment_desc   = _desc(gtype),
-                    category       = gen.to_category(gtype),
-                )
-            return current, "generative"
-        except gen.GenerativeBillingError:
-            raise
-        except gen.GenerativeUnavailable:
-            pass
+            return runner(ordered, model_template), method
+        except GenerativeBillingError:
+            raise                       # 크레딧 부족은 폴백 금지, 그대로 전파
+        except exc_types:
+            continue                    # 다음 백엔드로 캐스케이드
 
-    # ── 3. 절차적 폴백 ─────────────────────────────────────────
+    # 절차적 폴백 (모든 생성형 불가 시)
     return _procedural_fallback(garments, mannequin_img), "procedural"
+
+
+# ── 백엔드 러너 ────────────────────────────────────────────────
+def _run_higgsfield(ordered, model_template):
+    """Higgsfield: 단일 의류만 (순차 체이닝 NOT in scope — drift 확인됨)."""
+    current = (model_template or make_default_model_template()).convert("RGB")
+    garment_img, gtype = ordered[0]
+    return hgf.generate_tryon(
+        garment_img    = garment_img.convert("RGB"),
+        model_template = current,
+        garment_desc   = _desc(gtype),
+        category       = hgf.to_category(gtype),
+    )
+
+
+def _run_hf(ordered, model_template):
+    """HF Leffa/IDM-VTON: 흰 배경 제품 사진 직접 처리 (분리 불필요), 순차 적용."""
+    current = (model_template or make_default_model_template()).convert("RGB")
+    for garment_img, gtype in ordered:
+        current = hf.generate_tryon(
+            human_img    = current,
+            garment_img  = garment_img.convert("RGB"),
+            garment_type = gtype,
+            garment_des  = _desc(gtype),
+        )
+    return current
+
+
+def _run_replicate(ordered, model_template):
+    """Replicate IDM-VTON: 의류 분리 후 순차 적용."""
+    current = model_template or make_default_model_template()
+    for garment_img, gtype in ordered:
+        isolated = isolate_garment(garment_img)
+        current  = gen.generate_tryon(
+            garment_img    = isolated,
+            model_template = current,
+            garment_desc   = _desc(gtype),
+            category       = gen.to_category(gtype),
+        )
+    return current
+
+
+# (is_available, runner, 폴백 트리거 예외, method 라벨)
+# is_available은 lambda로 감싸 런타임 조회 (테스트 monkeypatch 가능)
+_RUNNERS = {
+    "higgsfield": (lambda: hgf.is_available(), _run_higgsfield, (hgf.HiggsfieldUnavailable,), "higgsfield"),
+    "hf":         (lambda: hf.is_available(),  _run_hf,         (hf.HFUnavailable,),          "hf"),
+    "replicate":  (lambda: gen.is_available(), _run_replicate,  (gen.GenerativeUnavailable,), "generative"),
+}
+
+_CHAINS = {
+    "auto":       ["higgsfield", "hf", "replicate"],
+    "higgsfield": ["higgsfield", "hf", "replicate"],
+    "hf":         ["hf"],
+    "replicate":  ["replicate"],
+}
 
 
 def _desc(garment_type: str) -> str:
