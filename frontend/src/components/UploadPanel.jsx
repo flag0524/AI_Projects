@@ -299,7 +299,7 @@ export default function UploadPanel({ onSubmit, loading, mode = 'generate' }) {
         onMouseEnter={e => { if (canSubmit && !loading) e.currentTarget.style.background = '#333' }}
         onMouseLeave={e => { if (canSubmit && !loading) e.currentTarget.style.background = 'var(--accent)' }}
       >
-        {loading ? '처리 중...' : isGenerate ? '모델 컷 생성' : '피팅 시작'}
+        {loading ? '처리 중...' : isGenerate ? '생성 시작' : '피팅 시작'}
       </button>
     </div>
   )
